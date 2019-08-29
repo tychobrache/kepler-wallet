@@ -391,7 +391,11 @@ pub fn parse_account_args(account_args: &ArgMatches) -> Result<command::AccountA
 
 pub fn parse_send_args(args: &ArgMatches) -> Result<command::SendArgs, ParseError> {
 	// amount
-	let asset = args.value_of("asset").unwrap().into();
+	let asset = args
+		.value_of("asset")
+		.and_then(|s| Some(s.into()))
+		.or(Some(Default::default()))
+		.unwrap();
 
 	let amount = parse_required(args, "amount")?;
 	let amount = core::core::amount_from_hr_string(amount);
