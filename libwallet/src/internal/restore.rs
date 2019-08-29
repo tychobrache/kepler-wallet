@@ -195,7 +195,7 @@ where
 	C: NodeClient,
 	K: Keychain,
 {
-	let commit = wallet.calc_commit_for_cache(output.value, &output.key_id)?;
+	let commit = wallet.calc_commit_for_cache(output.value, &output.key_id, output.asset)?;
 	let mut batch = wallet.batch()?;
 
 	let parent_key_id = output.key_id.parent_path();

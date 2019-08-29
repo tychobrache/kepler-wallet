@@ -189,7 +189,6 @@ impl NodeClient for HTTPNodeClient {
 				pedersen::Commitment,
 				pedersen::RangeProof,
 				Asset,
-				Asset,
 				bool,
 				u64,
 				u64,
@@ -202,10 +201,16 @@ impl NodeClient for HTTPNodeClient {
 
 		let url = format!("{}/v1/txhashset/outputs?{}", addr, query_param,);
 
-		let mut api_outputs: Vec<(pedersen::Commitment, pedersen::RangeProof, bool, u64, u64)> =
-			Vec::new();
+		let mut api_outputs: Vec<(
+			pedersen::Commitment,
+			pedersen::RangeProof,
+			Asset,
+			bool,
+			u64,
+			u64,
+		)> = Vec::new();
 
-		match api::client::get::<api::OutputListing>(url.as_str(), self.node_api_secret(), asset) {
+		match api::client::get::<api::OutputListing>(url.as_str(), self.node_api_secret()) {
 			Ok(o) => {
 				for out in o.outputs {
 					let is_coinbase = match out.output_type {

@@ -28,6 +28,7 @@ use crate::blake2::blake2b::Blake2b;
 use crate::keychain::{ChildNumber, ExtKeychain, Identifier, Keychain, SwitchCommitmentType};
 use crate::store::{self, option_to_not_found, to_key, to_key_u64};
 
+use crate::core::core::asset::Asset;
 use crate::core::core::Transaction;
 use crate::core::{global, ser};
 use crate::libwallet::{check_repair, restore};
@@ -198,13 +199,14 @@ where
 		&mut self,
 		amount: u64,
 		id: &Identifier,
+		asset: Asset,
 	) -> Result<Option<String>, Error> {
 		if self.config.no_commit_cache == Some(true) {
 			Ok(None)
 		} else {
 			Ok(Some(util::to_hex(
 				self.keychain()
-					.commit(amount, &id, &SwitchCommitmentType::Regular)?
+					.commit(amount, &id, &SwitchCommitmentType::Regular, asset.into())?
 					.0
 					.to_vec(), // TODO: proper support for different switch commitment schemes
 			)))
@@ -299,7 +301,7 @@ where
 			.join(filename);
 		let path_buf = Path::new(&path).to_path_buf();
 		let mut stored_tx = File::create(path_buf)?;
-		let tx_hex = util::to_hex(ser::ser_vec(tx).unwrap());;
+		let tx_hex = util::to_hex(ser::ser_vec(tx).unwrap());
 		stored_tx.write_all(&tx_hex.as_bytes())?;
 		stored_tx.sync_all()?;
 		Ok(())
@@ -364,13 +366,13 @@ where
 		Ok(last_confirmed_height)
 	}
 
-	fn restore(&mut self) -> Result<(), Error> {
-		restore(self).context(ErrorKind::Restore)?;
+	fn restore(&mut self, asset: Asset) -> Result<(), Error> {
+		restore(self, asset).context(ErrorKind::Restore)?;
 		Ok(())
 	}
 
-	fn check_repair(&mut self, delete_unconfirmed: bool) -> Result<(), Error> {
-		check_repair(self, delete_unconfirmed).context(ErrorKind::Restore)?;
+	fn check_repair(&mut self, delete_unconfirmed: bool, asset: Asset) -> Result<(), Error> {
+		check_repair(self, delete_unconfirmed, asset).context(ErrorKind::Restore)?;
 		Ok(())
 	}
 }

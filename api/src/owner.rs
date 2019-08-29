@@ -20,6 +20,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::core::core::asset::Asset;
 use crate::core::core::Transaction;
 use crate::impls::{HTTPWalletCommAdapter, KeybaseWalletCommAdapter};
 use crate::keychain::{Identifier, Keychain};
@@ -992,10 +993,10 @@ where
 	///		// ...
 	/// }
 	/// ```
-	pub fn restore(&self) -> Result<(), Error> {
+	pub fn restore(&self, asset: Asset) -> Result<(), Error> {
 		let mut w = self.wallet.lock();
 		w.open_with_credentials()?;
-		let res = owner::restore(&mut *w);
+		let res = owner::restore(&mut *w, asset);
 		w.close()?;
 		res
 	}
@@ -1046,10 +1047,10 @@ where
 	/// }
 	/// ```
 
-	pub fn check_repair(&self, delete_unconfirmed: bool) -> Result<(), Error> {
+	pub fn check_repair(&self, delete_unconfirmed: bool, asset: Asset) -> Result<(), Error> {
 		let mut w = self.wallet.lock();
 		w.open_with_credentials()?;
-		let res = owner::check_repair(&mut *w, delete_unconfirmed);
+		let res = owner::check_repair(&mut *w, delete_unconfirmed, asset);
 		w.close()?;
 		res
 	}

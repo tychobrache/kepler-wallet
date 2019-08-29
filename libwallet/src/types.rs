@@ -74,6 +74,7 @@ where
 		&mut self,
 		amount: u64,
 		id: &Identifier,
+		asset: Asset,
 	) -> Result<Option<String>, Error>;
 
 	/// Set parent key id by stored account name
@@ -127,10 +128,10 @@ where
 	fn last_confirmed_height<'a>(&mut self) -> Result<u64, Error>;
 
 	/// Attempt to restore the contents of a wallet from seed
-	fn restore(&mut self) -> Result<(), Error>;
+	fn restore(&mut self, asset: Asset) -> Result<(), Error>;
 
 	/// Attempt to check and fix wallet state
-	fn check_repair(&mut self, delete_unconfirmed: bool) -> Result<(), Error>;
+	fn check_repair(&mut self, delete_unconfirmed: bool, asset: Asset) -> Result<(), Error>;
 }
 
 /// Batch trait to update the output data backend atomically. Trying to use a

@@ -15,6 +15,7 @@
 //! JSON-RPC Stub generation for the Owner API
 use uuid::Uuid;
 
+use crate::core::core::asset::Asset;
 use crate::core::core::Transaction;
 use crate::keychain::{Identifier, Keychain};
 use crate::libwallet::{
@@ -1169,7 +1170,7 @@ pub trait OwnerRpc {
 	# , 1, false, false, false);
 	```
 	 */
-	fn restore(&self) -> Result<(), ErrorKind>;
+	fn restore(&self, asset: Asset) -> Result<(), ErrorKind>;
 
 	/**
 	Networked version of [Owner::check_repair](struct.Owner.html#method.check_repair).
@@ -1198,7 +1199,7 @@ pub trait OwnerRpc {
 	# , 1, false, false, false);
 	```
 	 */
-	fn check_repair(&self, delete_unconfirmed: bool) -> Result<(), ErrorKind>;
+	fn check_repair(&self, delete_unconfirmed: bool, asset: Asset) -> Result<(), ErrorKind>;
 
 	/**
 	Networked version of [Owner::node_height](struct.Owner.html#method.node_height).
@@ -1314,12 +1315,12 @@ where
 		Owner::verify_slate_messages(self, slate).map_err(|e| e.kind())
 	}
 
-	fn restore(&self) -> Result<(), ErrorKind> {
-		Owner::restore(self).map_err(|e| e.kind())
+	fn restore(&self, asset: Asset) -> Result<(), ErrorKind> {
+		Owner::restore(self, asset).map_err(|e| e.kind())
 	}
 
-	fn check_repair(&self, delete_unconfirmed: bool) -> Result<(), ErrorKind> {
-		Owner::check_repair(self, delete_unconfirmed).map_err(|e| e.kind())
+	fn check_repair(&self, delete_unconfirmed: bool, asset: Asset) -> Result<(), ErrorKind> {
+		Owner::check_repair(self, delete_unconfirmed, asset).map_err(|e| e.kind())
 	}
 
 	fn node_height(&self) -> Result<NodeHeightResult, ErrorKind> {

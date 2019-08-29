@@ -391,6 +391,8 @@ pub fn parse_account_args(account_args: &ArgMatches) -> Result<command::AccountA
 
 pub fn parse_send_args(args: &ArgMatches) -> Result<command::SendArgs, ParseError> {
 	// amount
+	let asset = args.value_of("asset").unwrap().into();
+
 	let amount = parse_required(args, "amount")?;
 	let amount = core::core::amount_from_hr_string(amount);
 	let amount = match amount {
@@ -472,6 +474,7 @@ pub fn parse_send_args(args: &ArgMatches) -> Result<command::SendArgs, ParseErro
 	};
 
 	Ok(command::SendArgs {
+		asset: asset,
 		amount: amount,
 		message: message,
 		minimum_confirmations: min_c,
@@ -568,6 +571,7 @@ pub fn parse_issue_invoice_args(
 pub fn parse_process_invoice_args(
 	args: &ArgMatches,
 ) -> Result<command::ProcessInvoiceArgs, ParseError> {
+	let asset = args.value_of("asset").unwrap().into();
 	// TODO: display and prompt for confirmation of what we're doing
 	// message
 	let message = match args.is_present("message") {
@@ -635,6 +639,7 @@ pub fn parse_process_invoice_args(
 	prompt_pay_invoice(&slate, method, dest)?;
 
 	Ok(command::ProcessInvoiceArgs {
+		asset: asset,
 		message: message,
 		minimum_confirmations: min_c,
 		selection_strategy: selection_strategy.to_owned(),
@@ -657,8 +662,10 @@ pub fn parse_info_args(args: &ArgMatches) -> Result<command::InfoArgs, ParseErro
 
 pub fn parse_check_args(args: &ArgMatches) -> Result<command::CheckArgs, ParseError> {
 	let delete_unconfirmed = args.is_present("delete_unconfirmed");
+	let asset = args.value_of("asset").unwrap();
 	Ok(command::CheckArgs {
 		delete_unconfirmed: delete_unconfirmed,
+		asset: asset.into(),
 	})
 }
 
@@ -842,7 +849,9 @@ pub fn wallet_command(
 			let a = arg_parse!(parse_cancel_args(&args));
 			command::cancel(inst_wallet(), a)
 		}
-		("restore", Some(_)) => command::restore(inst_wallet()),
+		("restore", Some(args)) => {
+			command::restore(inst_wallet(), args.value_of("asset").unwrap().into())
+		}
 		("check", Some(args)) => {
 			let a = arg_parse!(parse_check_args(&args));
 			command::check_repair(inst_wallet(), a)

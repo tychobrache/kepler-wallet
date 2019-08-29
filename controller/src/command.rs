@@ -168,7 +168,7 @@ pub fn listen(config: &WalletConfig, args: &ListenArgs, g_args: &GlobalArgs) -> 
 }
 
 pub fn owner_api(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	config: &WalletConfig,
 	g_args: &GlobalArgs,
 ) -> Result<(), Error> {
@@ -191,7 +191,7 @@ pub struct AccountArgs {
 }
 
 pub fn account(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: AccountArgs,
 ) -> Result<(), Error> {
 	if args.create.is_none() {
@@ -240,7 +240,7 @@ pub struct SendArgs {
 }
 
 pub fn send(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: SendArgs,
 	dark_scheme: bool,
 ) -> Result<(), Error> {
@@ -346,7 +346,7 @@ pub struct ReceiveArgs {
 }
 
 pub fn receive(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	g_args: &GlobalArgs,
 	args: ReceiveArgs,
 ) -> Result<(), Error> {
@@ -376,7 +376,7 @@ pub struct FinalizeArgs {
 }
 
 pub fn finalize(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: FinalizeArgs,
 ) -> Result<(), Error> {
 	let adapter = FileWalletCommAdapter::new();
@@ -445,7 +445,7 @@ pub struct IssueInvoiceArgs {
 }
 
 pub fn issue_invoice_tx(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: IssueInvoiceArgs,
 ) -> Result<(), Error> {
 	controller::owner_single_use(wallet.clone(), |api| {
@@ -473,7 +473,7 @@ pub struct ProcessInvoiceArgs {
 
 /// Process invoice
 pub fn process_invoice(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: ProcessInvoiceArgs,
 	dark_scheme: bool,
 ) -> Result<(), Error> {
@@ -563,7 +563,7 @@ pub struct InfoArgs {
 }
 
 pub fn info(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	g_args: &GlobalArgs,
 	args: InfoArgs,
 	dark_scheme: bool,
@@ -578,7 +578,7 @@ pub fn info(
 }
 
 pub fn outputs(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	g_args: &GlobalArgs,
 	dark_scheme: bool,
 ) -> Result<(), Error> {
@@ -597,7 +597,7 @@ pub struct TxsArgs {
 }
 
 pub fn txs(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	g_args: &GlobalArgs,
 	args: TxsArgs,
 	dark_scheme: bool,
@@ -637,7 +637,7 @@ pub struct RepostArgs {
 }
 
 pub fn repost(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: RepostArgs,
 ) -> Result<(), Error> {
 	controller::owner_single_use(wallet.clone(), |api| {
@@ -683,7 +683,7 @@ pub struct CancelArgs {
 }
 
 pub fn cancel(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: CancelArgs,
 ) -> Result<(), Error> {
 	controller::owner_single_use(wallet.clone(), |api| {
@@ -703,10 +703,11 @@ pub fn cancel(
 }
 
 pub fn restore(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	asset: Asset,
 ) -> Result<(), Error> {
 	controller::owner_single_use(wallet.clone(), |api| {
-		let result = api.restore();
+		let result = api.restore(asset);
 		match result {
 			Ok(_) => {
 				warn!("Wallet restore complete",);
@@ -724,17 +725,18 @@ pub fn restore(
 
 /// wallet check
 pub struct CheckArgs {
+	pub asset: Asset,
 	pub delete_unconfirmed: bool,
 }
 
 pub fn check_repair(
-	wallet: Arc<Mutex<WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: CheckArgs,
 ) -> Result<(), Error> {
 	controller::owner_single_use(wallet.clone(), |api| {
 		warn!("Starting wallet check...",);
 		warn!("Updating all wallet outputs, please wait ...",);
-		let result = api.check_repair(args.delete_unconfirmed);
+		let result = api.check_repair(args.delete_unconfirmed, args.asset);
 		match result {
 			Ok(_) => {
 				warn!("Wallet check complete",);

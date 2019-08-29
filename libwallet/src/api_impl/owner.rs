@@ -16,6 +16,7 @@
 
 use uuid::Uuid;
 
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::hash::Hashed;
 use crate::kepler_core::core::Transaction;
 use crate::kepler_core::ser;
@@ -439,24 +440,28 @@ pub fn verify_slate_messages(slate: &Slate) -> Result<(), Error> {
 }
 
 /// Attempt to restore contents of wallet
-pub fn restore<T: ?Sized, C, K>(w: &mut T) -> Result<(), Error>
+pub fn restore<T: ?Sized, C, K>(w: &mut T, asset: Asset) -> Result<(), Error>
 where
 	T: WalletBackend<C, K>,
 	C: NodeClient,
 	K: Keychain,
 {
-	w.restore()
+	w.restore(asset)
 }
 
 /// check repair
-pub fn check_repair<T: ?Sized, C, K>(w: &mut T, delete_unconfirmed: bool) -> Result<(), Error>
+pub fn check_repair<T: ?Sized, C, K>(
+	w: &mut T,
+	delete_unconfirmed: bool,
+	asset: Asset,
+) -> Result<(), Error>
 where
 	T: WalletBackend<C, K>,
 	C: NodeClient,
 	K: Keychain,
 {
 	update_outputs(w, true);
-	w.check_repair(delete_unconfirmed)
+	w.check_repair(delete_unconfirmed, asset)
 }
 
 /// node height

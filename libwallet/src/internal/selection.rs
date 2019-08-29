@@ -88,7 +88,7 @@ where
 		context.add_output(&id, &mmr_index, *change_amount);
 		commits.insert(
 			id.clone(),
-			wallet.calc_commit_for_cache(*change_amount, &id)?,
+			wallet.calc_commit_for_cache(*change_amount, &id, slate.asset)?,
 		);
 	}
 
@@ -113,7 +113,7 @@ where
 		output_commits.insert(
 			id.clone(),
 			(
-				wallet.calc_commit_for_cache(*change_amount, &id)?,
+				wallet.calc_commit_for_cache(*change_amount, &id, slate.asset)?,
 				*change_amount,
 			),
 		);
@@ -214,7 +214,7 @@ where
 
 	context.add_output(&key_id, &None, amount);
 	let messages = Some(slate.participant_messages());
-	let commit = wallet.calc_commit_for_cache(amount, &key_id_inner)?;
+	let commit = wallet.calc_commit_for_cache(amount, &key_id_inner, asset)?;
 	let mut batch = wallet.batch()?;
 	let log_id = batch.next_tx_log_id(&parent_key_id)?;
 	let mut t = TxLogEntry::new(parent_key_id.clone(), TxLogEntryType::TxReceived, log_id);

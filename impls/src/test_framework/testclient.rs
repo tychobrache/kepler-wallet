@@ -20,6 +20,7 @@ use crate::api;
 use crate::chain::types::NoopAdapter;
 use crate::chain::Chain;
 use crate::config::WalletConfig;
+use crate::core::core::asset::Asset;
 use crate::core::core::verifier_cache::LruVerifierCache;
 use crate::core::core::Transaction;
 use crate::core::global::{set_mining_mode, ChainTypes};
@@ -489,11 +490,19 @@ impl NodeClient for LocalWalletClient {
 		&self,
 		start_height: u64,
 		max_outputs: u64,
+		asset: Asset,
 	) -> Result<
 		(
 			u64,
 			u64,
-			Vec<(pedersen::Commitment, pedersen::RangeProof, bool, u64, u64)>,
+			Vec<(
+				pedersen::Commitment,
+				pedersen::RangeProof,
+				Asset,
+				bool,
+				u64,
+				u64,
+			)>,
 		),
 		libwallet::Error,
 	> {
@@ -516,8 +525,14 @@ impl NodeClient for LocalWalletClient {
 		let m = r.recv().unwrap();
 		let o: api::OutputListing = serde_json::from_str(&m.body).unwrap();
 
-		let mut api_outputs: Vec<(pedersen::Commitment, pedersen::RangeProof, bool, u64, u64)> =
-			Vec::new();
+		let mut api_outputs: Vec<(
+			pedersen::Commitment,
+			pedersen::RangeProof,
+			Asset,
+			bool,
+			u64,
+			u64,
+		)> = Vec::new();
 
 		for out in o.outputs {
 			let is_coinbase = match out.output_type {
@@ -527,6 +542,7 @@ impl NodeClient for LocalWalletClient {
 			api_outputs.push((
 				out.commit,
 				out.range_proof().unwrap(),
+				out.asset,
 				is_coinbase,
 				out.block_height.unwrap(),
 				out.mmr_index,
