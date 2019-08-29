@@ -17,6 +17,7 @@
 use crate::error::{Error, ErrorKind};
 use crate::internal::keys;
 use crate::kepler_core::core::amount_to_hr_string;
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::libtx::{
 	build,
 	proof::{ProofBuild, ProofBuilder},
@@ -50,6 +51,7 @@ where
 	let (elems, inputs, change_amounts_derivations, fee) = select_send_tx(
 		wallet,
 		slate.amount,
+		slate.asset,
 		slate.height,
 		minimum_confirmations,
 		slate.lock_height,
@@ -152,6 +154,7 @@ where
 				key_id: id.clone(),
 				n_child: id.to_path().last_path_index(),
 				commit: commit,
+				asset: slate.asset,
 				mmr_index: None,
 				value: change_amount.clone(),
 				status: OutputStatus::Unconfirmed,
@@ -189,12 +192,13 @@ where
 	let key_id_inner = key_id.clone();
 	let amount = slate.amount;
 	let height = slate.height;
+	let asset = slate.asset;
 
 	let slate_id = slate.id.clone();
 	let blinding = slate.add_transaction_elements(
 		&keychain,
 		&ProofBuilder::new(&keychain),
-		vec![build::output(amount, key_id.clone())],
+		vec![build::output(asset, amount, key_id.clone())],
 	)?;
 
 	// Add blinding sum to our context
@@ -224,6 +228,7 @@ where
 		mmr_index: None,
 		n_child: key_id_inner.to_path().last_path_index(),
 		commit: commit,
+		asset: asset,
 		value: amount,
 		status: OutputStatus::Unconfirmed,
 		height: height,
@@ -243,6 +248,7 @@ where
 pub fn select_send_tx<T: ?Sized, C, K, B>(
 	wallet: &mut T,
 	amount: u64,
+	asset: Asset,
 	current_height: u64,
 	minimum_confirmations: u64,
 	lock_height: u64,
@@ -278,7 +284,7 @@ where
 
 	// build transaction skeleton with inputs and change
 	let (mut parts, change_amounts_derivations) =
-		inputs_and_change(&coins, wallet, amount, fee, change_outputs)?;
+		inputs_and_change(&coins, wallet, amount, fee, change_outputs, asset)?;
 
 	// This is more proof of concept than anything but here we set lock_height
 	// on tx being sent (based on current chain height via api).
@@ -399,6 +405,7 @@ pub fn inputs_and_change<T: ?Sized, C, K, B>(
 	amount: u64,
 	fee: u64,
 	num_change_outputs: usize,
+	asset: Asset,
 ) -> Result<
 	(
 		Vec<Box<build::Append<K, B>>>,
@@ -429,7 +436,7 @@ where
 		if coin.is_coinbase {
 			parts.push(build::coinbase_input(coin.value, coin.key_id.clone()));
 		} else {
-			parts.push(build::input(coin.value, coin.key_id.clone()));
+			parts.push(build::input(asset, coin.value, coin.key_id.clone()));
 		}
 	}
 
@@ -457,7 +464,7 @@ where
 			let change_key = wallet.next_child().unwrap();
 
 			change_amounts_derivations.push((change_amount, change_key.clone(), None));
-			parts.push(build::output(change_amount, change_key));
+			parts.push(build::output(asset, change_amount, change_key));
 		}
 	}
 

@@ -17,6 +17,7 @@
 
 use futures::{stream, Stream};
 
+use crate::core::core::asset::Asset;
 use crate::libwallet::{NodeClient, NodeVersionInfo, TxWrapper};
 use std::collections::HashMap;
 use tokio::runtime::Runtime;
@@ -179,11 +180,20 @@ impl NodeClient for HTTPNodeClient {
 		&self,
 		start_height: u64,
 		max_outputs: u64,
+		asset: Asset,
 	) -> Result<
 		(
 			u64,
 			u64,
-			Vec<(pedersen::Commitment, pedersen::RangeProof, bool, u64, u64)>,
+			Vec<(
+				pedersen::Commitment,
+				pedersen::RangeProof,
+				Asset,
+				Asset,
+				bool,
+				u64,
+				u64,
+			)>,
 		),
 		libwallet::Error,
 	> {
@@ -195,7 +205,7 @@ impl NodeClient for HTTPNodeClient {
 		let mut api_outputs: Vec<(pedersen::Commitment, pedersen::RangeProof, bool, u64, u64)> =
 			Vec::new();
 
-		match api::client::get::<api::OutputListing>(url.as_str(), self.node_api_secret()) {
+		match api::client::get::<api::OutputListing>(url.as_str(), self.node_api_secret(), asset) {
 			Ok(o) => {
 				for out in o.outputs {
 					let is_coinbase = match out.output_type {
@@ -205,6 +215,7 @@ impl NodeClient for HTTPNodeClient {
 					api_outputs.push((
 						out.commit,
 						out.range_proof().unwrap(),
+						out.asset,
 						is_coinbase,
 						out.block_height.unwrap(),
 						out.mmr_index,

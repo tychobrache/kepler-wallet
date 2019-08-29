@@ -21,6 +21,7 @@ use uuid::Uuid;
 use crate::error::Error;
 use crate::internal::keys;
 use crate::kepler_core::consensus::reward;
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::{Output, TxKernel};
 use crate::kepler_core::global;
 use crate::kepler_core::libtx::proof::ProofBuilder;
@@ -76,7 +77,12 @@ where
 			let commit = match output.commit.clone() {
 				Some(c) => pedersen::Commitment::from_vec(util::from_hex(c).unwrap()),
 				None => keychain
-					.commit(output.value, &output.key_id, &SwitchCommitmentType::Regular)
+					.commit(
+						output.value,
+						&output.key_id,
+						&SwitchCommitmentType::Regular,
+						output.asset.into(),
+					)
 					.unwrap(), // TODO: proper support for different switch commitment schemes
 			};
 			OutputCommitMapping { output, commit }
@@ -190,7 +196,12 @@ where
 		let commit = match out.commit.clone() {
 			Some(c) => pedersen::Commitment::from_vec(util::from_hex(c).unwrap()),
 			None => keychain
-				.commit(out.value, &out.key_id, &SwitchCommitmentType::Regular)
+				.commit(
+					out.value,
+					&out.key_id,
+					&SwitchCommitmentType::Regular,
+					out.asset.into(),
+				)
 				.unwrap(), // TODO: proper support for different switch commitment schemes
 		};
 		wallet_outputs.insert(commit, (out.key_id.clone(), out.mmr_index));
@@ -495,6 +506,7 @@ where
 			lock_height: lock_height,
 			is_coinbase: true,
 			tx_log_entry: None,
+			asset: Asset::default(), // TOTO asset
 		})?;
 		batch.commit()?;
 	}

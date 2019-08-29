@@ -16,6 +16,7 @@
 //! implementation
 
 use crate::error::{Error, ErrorKind};
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::hash::Hash;
 use crate::kepler_core::core::Transaction;
 use crate::kepler_core::libtx::{aggsig, secp_ser};
@@ -244,11 +245,19 @@ pub trait NodeClient: Sync + Send + Clone {
 		&self,
 		start_height: u64,
 		max_outputs: u64,
+		asset: Asset,
 	) -> Result<
 		(
 			u64,
 			u64,
-			Vec<(pedersen::Commitment, pedersen::RangeProof, bool, u64, u64)>,
+			Vec<(
+				pedersen::Commitment,
+				pedersen::RangeProof,
+				Asset,
+				bool,
+				u64,
+				u64,
+			)>,
 		),
 		Error,
 	>;
@@ -298,6 +307,8 @@ pub struct OutputData {
 	pub is_coinbase: bool,
 	/// Optional corresponding internal entry in tx entry log
 	pub tx_log_entry: Option<u32>,
+	/// asset
+	pub asset: Asset,
 }
 
 impl ser::Writeable for OutputData {

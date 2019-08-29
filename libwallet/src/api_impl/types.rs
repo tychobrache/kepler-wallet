@@ -14,6 +14,7 @@
 
 //! Types specific to the wallet api, mostly argument serialization
 
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::{Output, TxKernel};
 use crate::kepler_core::libtx::secp_ser;
 use crate::kepler_keychain::Identifier;
@@ -49,6 +50,7 @@ pub struct SendTXArgs {
 /// V2 Init / Send TX API Args
 #[derive(Clone, Serialize, Deserialize)]
 pub struct InitTxArgs {
+	pub asset: Asset,
 	/// The human readable account name from which to draw outputs
 	/// for the transaction, overriding whatever the active account is as set via the
 	/// [`set_active_account`](../kepler_wallet_api/owner/struct.Owner.html#method.set_active_account) method.
@@ -116,6 +118,7 @@ pub struct InitTxSendArgs {
 impl Default for InitTxArgs {
 	fn default() -> InitTxArgs {
 		InitTxArgs {
+			asset: Asset::default(),
 			src_acct_name: None,
 			amount: 0,
 			minimum_confirmations: 10,

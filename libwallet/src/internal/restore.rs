@@ -15,6 +15,7 @@
 
 use crate::internal::{keys, updater};
 use crate::kepler_core::consensus::{valid_header_version, WEEK_HEIGHT};
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::HeaderVersion;
 use crate::kepler_core::global;
 use crate::kepler_core::libtx::proof;
@@ -44,6 +45,7 @@ struct OutputResult {
 	pub lock_height: u64,
 	///
 	pub is_coinbase: bool,
+	pub asset: Asset,
 }
 
 #[derive(Debug, Clone)]
@@ -60,7 +62,14 @@ struct RestoredTxStats {
 
 fn identify_utxo_outputs<T, C, K>(
 	wallet: &mut T,
-	outputs: Vec<(pedersen::Commitment, pedersen::RangeProof, bool, u64, u64)>,
+	outputs: Vec<(
+		pedersen::Commitment,
+		pedersen::RangeProof,
+		Asset,
+		bool,
+		u64,
+		u64,
+	)>,
 ) -> Result<Vec<OutputResult>, Error>
 where
 	T: WalletBackend<C, K>,
@@ -80,21 +89,28 @@ where
 	let legacy_version = HeaderVersion(1);
 
 	for output in outputs.iter() {
-		let (commit, proof, is_coinbase, height, mmr_index) = output;
+		let (commit, proof, asset, is_coinbase, height, mmr_index) = output;
 		// attempt to unwind message from the RP and get a value
 		// will fail if it's not ours
 		let info = {
 			// Before HF+2wk, try legacy rewind first
 			let info_legacy =
 				if valid_header_version(height.saturating_sub(2 * WEEK_HEIGHT), legacy_version) {
-					proof::rewind(keychain.secp(), &legacy_builder, *commit, None, *proof)?
+					proof::rewind(
+						keychain.secp(),
+						&legacy_builder,
+						*commit,
+						None,
+						*proof,
+						*asset,
+					)?
 				} else {
 					None
 				};
 
 			// If legacy didn't work, try new rewind
 			if info_legacy.is_none() {
-				proof::rewind(keychain.secp(), &builder, *commit, None, *proof)?
+				proof::rewind(keychain.secp(), &builder, *commit, None, *proof, *asset)?
 			} else {
 				info_legacy
 			}
@@ -131,12 +147,13 @@ where
 			lock_height: lock_height,
 			is_coinbase: *is_coinbase,
 			mmr_index: *mmr_index,
+			asset: *asset,
 		});
 	}
 	Ok(wallet_outputs)
 }
 
-fn collect_chain_outputs<T, C, K>(wallet: &mut T) -> Result<Vec<OutputResult>, Error>
+fn collect_chain_outputs<T, C, K>(wallet: &mut T, asset: Asset) -> Result<Vec<OutputResult>, Error>
 where
 	T: WalletBackend<C, K>,
 	C: NodeClient,
@@ -148,7 +165,7 @@ where
 	loop {
 		let (highest_index, last_retrieved_index, outputs) = wallet
 			.w2n_client()
-			.get_outputs_by_pmmr_index(start_index, batch_size)?;
+			.get_outputs_by_pmmr_index(start_index, batch_size, asset)?;
 		warn!(
 			"Checking {} outputs, up to index {}. (Highest index: {})",
 			outputs.len(),
@@ -232,6 +249,7 @@ where
 		n_child: output.n_child,
 		mmr_index: Some(output.mmr_index),
 		commit: commit,
+		asset: output.asset,
 		value: output.value,
 		status: OutputStatus::Unspent,
 		height: output.height,
@@ -290,7 +308,11 @@ where
 /// Check / repair wallet contents
 /// assume wallet contents have been freshly updated with contents
 /// of latest block
-pub fn check_repair<T, C, K>(wallet: &mut T, delete_unconfirmed: bool) -> Result<(), Error>
+pub fn check_repair<T, C, K>(
+	wallet: &mut T,
+	delete_unconfirmed: bool,
+	asset: Asset,
+) -> Result<(), Error>
 where
 	T: WalletBackend<C, K>,
 	C: NodeClient,
@@ -298,7 +320,7 @@ where
 {
 	// First, get a definitive list of outputs we own from the chain
 	warn!("Starting wallet check.");
-	let chain_outs = collect_chain_outputs(wallet)?;
+	let chain_outs = collect_chain_outputs(wallet, asset)?;
 	warn!(
 		"Identified {} wallet_outputs as belonging to this wallet",
 		chain_outs.len(),
@@ -412,7 +434,7 @@ where
 }
 
 /// Restore a wallet
-pub fn restore<T, C, K>(wallet: &mut T) -> Result<(), Error>
+pub fn restore<T, C, K>(wallet: &mut T, asset: Asset) -> Result<(), Error>
 where
 	T: WalletBackend<C, K>,
 	C: NodeClient,
@@ -428,7 +450,7 @@ where
 	let now = Instant::now();
 	warn!("Starting restore.");
 
-	let result_vec = collect_chain_outputs(wallet)?;
+	let result_vec = collect_chain_outputs(wallet, asset)?;
 
 	warn!(
 		"Identified {} wallet_outputs as belonging to this wallet",

@@ -35,6 +35,7 @@
 //!    orig_version: u16,
 //!    block_header_version: u16,
 
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::transaction::{KernelFeatures, OutputFeatures};
 use crate::kepler_core::libtx::secp_ser;
 use crate::kepler_keychain::BlindingFactor;
@@ -55,6 +56,7 @@ pub struct SlateV2 {
 	/// The core transaction data:
 	/// inputs, outputs, kernels, kernel offset
 	pub tx: TransactionV2,
+	pub asset: Asset,
 	/// base amount (excluding fee)
 	#[serde(with = "secp_ser::string_or_u64")]
 	pub amount: u64,
@@ -139,6 +141,12 @@ pub struct InputV2 {
 		deserialize_with = "secp_ser::commitment_from_hex"
 	)]
 	pub commit: Commitment,
+	/// The asset referencing the output being spent.
+	#[serde(
+		serialize_with = "secp_ser::as_hex",
+		deserialize_with = "secp_ser::asset_from_hex"
+	)]
+	pub asset: Asset,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -157,6 +165,12 @@ pub struct OutputV2 {
 		deserialize_with = "secp_ser::rangeproof_from_hex"
 	)]
 	pub proof: RangeProof,
+	/// A proof that the asset is in the right range
+	#[serde(
+		serialize_with = "secp_ser::as_hex",
+		deserialize_with = "secp_ser::asset_from_hex"
+	)]
+	pub asset: Asset,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

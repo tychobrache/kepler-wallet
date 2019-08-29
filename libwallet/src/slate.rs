@@ -18,6 +18,7 @@
 use crate::blake2::blake2b::blake2b;
 use crate::error::{Error, ErrorKind};
 use crate::kepler_core::core::amount_to_hr_string;
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::committed::Committed;
 use crate::kepler_core::core::transaction::{
 	kernel_features, kernel_sig_msg, Input, Output, Transaction, TransactionBody, TxKernel,
@@ -158,6 +159,7 @@ pub struct Slate {
 	/// The core transaction data:
 	/// inputs, outputs, kernels, kernel offset
 	pub tx: Transaction,
+	pub asset: Asset,
 	/// base amount (excluding fee)
 	#[serde(with = "secp_ser::string_or_u64")]
 	pub amount: u64,
@@ -225,6 +227,7 @@ impl Slate {
 			num_participants: num_participants,
 			id: Uuid::new_v4(),
 			tx: Transaction::empty(),
+			asset: Asset::default(),
 			amount: 0,
 			fee: 0,
 			height: 0,
@@ -716,6 +719,7 @@ impl From<Slate> for SlateV2 {
 			num_participants,
 			id,
 			tx,
+			asset,
 			amount,
 			fee,
 			height,
@@ -730,6 +734,7 @@ impl From<Slate> for SlateV2 {
 			num_participants,
 			id,
 			tx,
+			asset,
 			amount,
 			fee,
 			height,
@@ -746,6 +751,7 @@ impl From<&Slate> for SlateV2 {
 			num_participants,
 			id,
 			tx,
+			asset,
 			amount,
 			fee,
 			height,
@@ -759,6 +765,7 @@ impl From<&Slate> for SlateV2 {
 		let amount = *amount;
 		let fee = *fee;
 		let height = *height;
+		let asset = *asset;
 		let lock_height = *lock_height;
 		let participant_data = map_vec!(participant_data, |data| ParticipantDataV2::from(data));
 		let version_info = VersionCompatInfoV2::from(version_info);
@@ -766,6 +773,7 @@ impl From<&Slate> for SlateV2 {
 			num_participants,
 			id,
 			tx,
+			asset,
 			amount,
 			fee,
 			height,
@@ -859,8 +867,16 @@ impl From<&TransactionBody> for TransactionBodyV2 {
 
 impl From<&Input> for InputV2 {
 	fn from(input: &Input) -> InputV2 {
-		let Input { features, commit } = *input;
-		InputV2 { features, commit }
+		let Input {
+			features,
+			commit,
+			asset,
+		} = *input;
+		InputV2 {
+			features,
+			commit,
+			asset,
+		}
 	}
 }
 
@@ -870,11 +886,13 @@ impl From<&Output> for OutputV2 {
 			features,
 			commit,
 			proof,
+			asset,
 		} = *output;
 		OutputV2 {
 			features,
 			commit,
 			proof,
+			asset,
 		}
 	}
 }
@@ -905,6 +923,7 @@ impl From<SlateV2> for Slate {
 			num_participants,
 			id,
 			tx,
+			asset,
 			amount,
 			fee,
 			height,
@@ -919,6 +938,7 @@ impl From<SlateV2> for Slate {
 			num_participants,
 			id,
 			tx,
+			asset,
 			amount,
 			fee,
 			height,
@@ -1003,8 +1023,16 @@ impl From<&TransactionBodyV2> for TransactionBody {
 
 impl From<&InputV2> for Input {
 	fn from(input: &InputV2) -> Input {
-		let InputV2 { features, commit } = *input;
-		Input { features, commit }
+		let InputV2 {
+			features,
+			commit,
+			asset,
+		} = *input;
+		Input {
+			features,
+			commit,
+			asset,
+		}
 	}
 }
 
@@ -1014,11 +1042,13 @@ impl From<&OutputV2> for Output {
 			features,
 			commit,
 			proof,
+			asset,
 		} = *output;
 		Output {
 			features,
 			commit,
 			proof,
+			asset,
 		}
 	}
 }

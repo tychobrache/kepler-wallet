@@ -26,6 +26,7 @@ use uuid::Uuid;
 
 use crate::api::TLSConfig;
 use crate::core::core;
+use crate::core::core::asset::Asset;
 use crate::keychain;
 
 use crate::config::WalletConfig;
@@ -224,6 +225,7 @@ pub fn account(
 
 /// Arguments for the send command
 pub struct SendArgs {
+	pub asset: Asset,
 	pub amount: u64,
 	pub message: Option<String>,
 	pub minimum_confirmations: u64,
@@ -248,6 +250,7 @@ pub fn send(
 				.into_iter()
 				.map(|strategy| {
 					let init_args = InitTxArgs {
+						asset: args.asset,
 						src_acct_name: None,
 						amount: args.amount,
 						minimum_confirmations: args.minimum_confirmations,
@@ -264,6 +267,7 @@ pub fn send(
 			display::estimate(args.amount, strategies, dark_scheme);
 		} else {
 			let init_args = InitTxArgs {
+				asset: args.asset,
 				src_acct_name: None,
 				amount: args.amount,
 				minimum_confirmations: args.minimum_confirmations,
@@ -456,6 +460,7 @@ pub fn issue_invoice_tx(
 
 /// Arguments for the process_invoice command
 pub struct ProcessInvoiceArgs {
+	pub asset: Asset,
 	pub message: Option<String>,
 	pub minimum_confirmations: u64,
 	pub selection_strategy: String,
@@ -480,6 +485,7 @@ pub fn process_invoice(
 				.into_iter()
 				.map(|strategy| {
 					let init_args = InitTxArgs {
+						asset: args.asset,
 						src_acct_name: None,
 						amount: slate.amount,
 						minimum_confirmations: args.minimum_confirmations,
@@ -496,6 +502,7 @@ pub fn process_invoice(
 			display::estimate(slate.amount, strategies, dark_scheme);
 		} else {
 			let init_args = InitTxArgs {
+				asset: args.asset,
 				src_acct_name: None,
 				amount: 0,
 				minimum_confirmations: args.minimum_confirmations,
