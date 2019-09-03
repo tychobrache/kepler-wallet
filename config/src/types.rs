@@ -74,7 +74,8 @@ impl Default for WalletConfig {
 			tls_certificate_file: None,
 			tls_certificate_key: None,
 			dark_background_color_scheme: Some(true),
-			keybase_notify_ttl: Some(1440),
+			//keybase_notify_ttl: Some(1440),// TODO debug
+			keybase_notify_ttl: Some(3), // TODO debug
 		}
 	}
 }

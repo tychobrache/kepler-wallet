@@ -575,7 +575,12 @@ pub fn parse_issue_invoice_args(
 pub fn parse_process_invoice_args(
 	args: &ArgMatches,
 ) -> Result<command::ProcessInvoiceArgs, ParseError> {
-	let asset = args.value_of("asset").unwrap().into();
+	let asset = args
+		.value_of("asset")
+		.and_then(|s| Some(s.into()))
+		.or(Some(Default::default()))
+		.unwrap();
+
 	// TODO: display and prompt for confirmation of what we're doing
 	// message
 	let message = match args.is_present("message") {
@@ -666,10 +671,15 @@ pub fn parse_info_args(args: &ArgMatches) -> Result<command::InfoArgs, ParseErro
 
 pub fn parse_check_args(args: &ArgMatches) -> Result<command::CheckArgs, ParseError> {
 	let delete_unconfirmed = args.is_present("delete_unconfirmed");
-	let asset = args.value_of("asset").unwrap();
+	let asset = args
+		.value_of("asset")
+		.and_then(|s| Some(s.into()))
+		.or(Some(Default::default()))
+		.unwrap();
+
 	Ok(command::CheckArgs {
 		delete_unconfirmed: delete_unconfirmed,
-		asset: asset.into(),
+		asset: asset,
 	})
 }
 
@@ -854,7 +864,13 @@ pub fn wallet_command(
 			command::cancel(inst_wallet(), a)
 		}
 		("restore", Some(args)) => {
-			command::restore(inst_wallet(), args.value_of("asset").unwrap().into())
+			let asset = args
+				.value_of("asset")
+				.and_then(|s| Some(s.into()))
+				.or(Some(Default::default()))
+				.unwrap();
+
+			command::restore(inst_wallet(), asset)
 		}
 		("check", Some(args)) => {
 			let a = arg_parse!(parse_check_args(&args));

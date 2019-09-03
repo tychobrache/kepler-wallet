@@ -41,12 +41,12 @@ dirs = "1.0.3"
 # kepler_store = { git = "https://github.com/sulaweisi/kepler", branch = "kepler-milestone/2.0.0" }
 
 # For local testing
-kepler_core = { path = "../../kepler_node/core"}
-kepler_keychain = { path = "../../kepler_node/keychain"}
-kepler_chain = { path = "../../kepler_node/chain"}
-kepler_util = { path = "../../kepler_node/util"}
-kepler_api = { path = "../../kepler_node/api"}
-kepler_store = { path = "../../kepler_node/store"}
+kepler_core = { path = "../../kepler-node/core"}
+kepler_keychain = { path = "../../kepler-node/keychain"}
+kepler_chain = { path = "../../kepler-node/chain"}
+kepler_util = { path = "../../kepler-node/util"}
+kepler_api = { path = "../../kepler-node/api"}
+kepler_store = { path = "../../kepler-node/store"}
 
 [dev-dependencies]
 pretty_assertions = "0.5.1"

@@ -404,6 +404,7 @@ where
 	let mut locked_total = 0;
 
 	for out in outputs {
+		println!("out value: {}, status: {:?}", out.value, out.status);
 		match out.status {
 			OutputStatus::Unspent => {
 				if out.is_coinbase && out.lock_height > current_height {
@@ -431,6 +432,7 @@ where
 			OutputStatus::Spent => {}
 		}
 	}
+	println!("unspend : {}", unspent_total);
 
 	Ok(WalletInfo {
 		last_confirmed_height: current_height,
@@ -492,7 +494,8 @@ where
 	{
 		// Now acquire the wallet lock and write the new output.
 		let amount = reward(height, block_fees.fees);
-		let commit = wallet.calc_commit_for_cache(amount, &key_id, Asset::default())?; // TODO asset
+		let asset = Default::default(); // TODO main coin
+		let commit = wallet.calc_commit_for_cache(amount, &key_id, asset)?;
 		let mut batch = wallet.batch()?;
 		batch.save(OutputData {
 			root_key_id: parent_key_id,
@@ -506,9 +509,10 @@ where
 			lock_height: lock_height,
 			is_coinbase: true,
 			tx_log_entry: None,
-			asset: Asset::default(), // TOTO asset
+			asset: asset,
 		})?;
 		batch.commit()?;
+		debug!("-----receive coinbase amount: {}------", amount);
 	}
 
 	debug!(

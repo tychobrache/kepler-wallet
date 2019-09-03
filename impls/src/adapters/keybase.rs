@@ -392,7 +392,7 @@ impl WalletCommAdapter for KeybaseWalletCommAdapter {
 
 								if success {
 									notify_on_receive(
-										config.keybase_notify_ttl.unwrap_or(1440),
+										config.keybase_notify_ttl.unwrap_or(3),
 										channel.to_string(),
 										tx_uuid.to_string(),
 									);

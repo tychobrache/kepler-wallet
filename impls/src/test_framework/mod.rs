@@ -41,8 +41,8 @@ pub use self::{testclient::LocalWalletClient, testclient::WalletProxy};
 /// Get an output from the chain locally and present it back as an API output
 fn get_output_local(chain: &chain::Chain, commit: &pedersen::Commitment) -> Option<api::Output> {
 	let outputs = [
-		OutputIdentifier::new(OutputFeatures::Plain, commit),
-		OutputIdentifier::new(OutputFeatures::Coinbase, commit),
+		OutputIdentifier::new(OutputFeatures::Plain, commit, Default::default()),
+		OutputIdentifier::new(OutputFeatures::Coinbase, commit, Default::default()),
 	];
 
 	for x in outputs.iter() {
