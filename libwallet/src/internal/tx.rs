@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 use crate::internal::{selection, updater};
 use crate::kepler_core::consensus::valid_header_version;
+use crate::kepler_core::core::issued_asset::AssetAction;
 use crate::kepler_core::core::HeaderVersion;
 use crate::kepler_keychain::{Identifier, Keychain};
 use crate::kepler_util::Mutex;
@@ -126,6 +127,7 @@ pub fn add_inputs_to_slate<T: ?Sized, C, K>(
 	message: Option<String>,
 	is_initator: bool,
 	use_test_rng: bool,
+	asset_actions: Vec<AssetAction>,
 ) -> Result<Context, Error>
 where
 	T: WalletBackend<C, K>,
@@ -151,6 +153,7 @@ where
 		selection_strategy_is_use_all,
 		parent_key_id.clone(),
 		use_test_rng,
+		asset_actions,
 	)?;
 
 	// Generate a kernel offset and subtract from our context's secret key. Store

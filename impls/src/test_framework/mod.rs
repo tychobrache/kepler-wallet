@@ -17,6 +17,7 @@ use crate::chain;
 use crate::chain::Chain;
 use crate::config::WalletConfig;
 use crate::core;
+use crate::core::core::issued_asset::AssetAction;
 use crate::core::core::{OutputFeatures, OutputIdentifier, Transaction};
 use crate::core::{consensus, global, pow};
 use crate::keychain;
@@ -189,6 +190,7 @@ pub fn send_to_dest<T: ?Sized, C, K>(
 	dest: &str,
 	amount: u64,
 	test_mode: bool,
+	assets: Vec<AssetAction>,
 ) -> Result<(), libwallet::Error>
 where
 	T: WalletBackend<C, K>,
@@ -207,7 +209,7 @@ where
 			selection_strategy_is_use_all: true,
 			..Default::default()
 		};
-		let slate_i = owner::init_send_tx(&mut *w, args, test_mode)?;
+		let slate_i = owner::init_send_tx(&mut *w, args, test_mode, assets)?;
 		let slate = client.send_tx_slate_direct(dest, &slate_i)?;
 		owner::tx_lock_outputs(&mut *w, &slate, 0)?;
 		let slate = owner::finalize_tx(&mut *w, &slate)?;

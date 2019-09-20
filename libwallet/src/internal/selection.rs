@@ -18,6 +18,7 @@ use crate::error::{Error, ErrorKind};
 use crate::internal::keys;
 use crate::kepler_core::core::amount_to_hr_string;
 use crate::kepler_core::core::asset::Asset;
+use crate::kepler_core::core::issued_asset::AssetAction;
 use crate::kepler_core::libtx::{
 	build,
 	proof::{ProofBuild, ProofBuilder},
@@ -42,13 +43,14 @@ pub fn build_send_tx<T: ?Sized, C, K>(
 	selection_strategy_is_use_all: bool,
 	parent_key_id: Identifier,
 	use_test_nonce: bool,
+	mut asset_actions: Vec<AssetAction>,
 ) -> Result<Context, Error>
 where
 	T: WalletBackend<C, K>,
 	C: NodeClient,
 	K: Keychain,
 {
-	let (elems, inputs, change_amounts_derivations, fee) = select_send_tx(
+	let (mut elems, inputs, change_amounts_derivations, fee) = select_send_tx(
 		wallet,
 		slate.amount,
 		slate.asset,
@@ -61,6 +63,11 @@ where
 		&parent_key_id,
 	)?;
 	let keychain = wallet.keychain();
+
+	while (!asset_actions.is_empty()) {
+		elems.push(build::asset(asset_actions.pop().unwrap()));
+	}
+
 	let blinding = slate.add_transaction_elements(keychain, &ProofBuilder::new(keychain), elems)?;
 
 	slate.fee = fee;

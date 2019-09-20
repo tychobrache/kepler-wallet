@@ -852,6 +852,7 @@ impl From<&TransactionBody> for TransactionBodyV2 {
 			inputs,
 			outputs,
 			kernels,
+			assets,
 		} = body;
 
 		let inputs = map_vec!(inputs, |inp| InputV2::from(inp));
@@ -861,6 +862,7 @@ impl From<&TransactionBody> for TransactionBodyV2 {
 			inputs,
 			outputs,
 			kernels,
+			assets: assets.clone(),
 		}
 	}
 }
@@ -1008,6 +1010,7 @@ impl From<&TransactionBodyV2> for TransactionBody {
 			inputs,
 			outputs,
 			kernels,
+			assets,
 		} = body;
 
 		let inputs = map_vec!(inputs, |inp| Input::from(inp));
@@ -1017,6 +1020,7 @@ impl From<&TransactionBodyV2> for TransactionBody {
 			inputs,
 			outputs,
 			kernels,
+			assets: assets.clone(),
 		}
 	}
 }

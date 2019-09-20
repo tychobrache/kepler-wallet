@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::hash::Hashed;
+use crate::kepler_core::core::issued_asset::AssetAction;
 use crate::kepler_core::core::Transaction;
 use crate::kepler_core::ser;
 use crate::kepler_util;
@@ -140,6 +141,7 @@ pub fn init_send_tx<T: ?Sized, C, K>(
 	w: &mut T,
 	args: InitTxArgs,
 	use_test_rng: bool,
+	assets: Vec<AssetAction>,
 ) -> Result<Slate, Error>
 where
 	T: WalletBackend<C, K>,
@@ -196,6 +198,7 @@ where
 		message,
 		true,
 		use_test_rng,
+		assets,
 	)?;
 
 	// Save the aggsig context in our DB for when we
@@ -274,6 +277,7 @@ pub fn process_invoice_tx<T: ?Sized, C, K>(
 	slate: &Slate,
 	args: InitTxArgs,
 	use_test_rng: bool,
+	assets: Vec<AssetAction>,
 ) -> Result<Slate, Error>
 where
 	T: WalletBackend<C, K>,
@@ -328,6 +332,7 @@ where
 		message,
 		false,
 		use_test_rng,
+		assets,
 	)?;
 
 	// Save the aggsig context in our DB for when we

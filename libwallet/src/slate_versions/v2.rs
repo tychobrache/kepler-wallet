@@ -36,6 +36,7 @@
 //!    block_header_version: u16,
 
 use crate::kepler_core::core::asset::Asset;
+use crate::kepler_core::core::issued_asset::AssetAction;
 use crate::kepler_core::core::transaction::{KernelFeatures, OutputFeatures};
 use crate::kepler_core::libtx::secp_ser;
 use crate::kepler_keychain::BlindingFactor;
@@ -129,6 +130,7 @@ pub struct TransactionBodyV2 {
 	pub outputs: Vec<OutputV2>,
 	/// List of kernels that make up this transaction (usually a single kernel).
 	pub kernels: Vec<TxKernelV2>,
+	pub assets: Vec<AssetAction>,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InputV2 {
