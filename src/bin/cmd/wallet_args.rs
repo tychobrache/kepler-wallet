@@ -493,6 +493,110 @@ pub fn parse_send_args(args: &ArgMatches) -> Result<command::SendArgs, ParseErro
 	})
 }
 
+pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseError> {
+	// amount
+	let asset = args
+		.value_of("asset")
+		.and_then(|s| Some(s.into()))
+		.or(Some(Default::default()))
+		.unwrap();
+
+	let amount = parse_required(args, "amount")?;
+	let amount = core::core::amount_from_hr_string(amount);
+	let amount = match amount {
+		Ok(a) => a,
+		Err(e) => {
+			let msg = format!(
+				"Could not parse amount as a number with optional decimal point. e={}",
+				e
+			);
+			return Err(ParseError::ArgumentError(msg));
+		}
+	};
+
+	// message
+	let message = match args.is_present("message") {
+		true => Some(args.value_of("message").unwrap().to_owned()),
+		false => None,
+	};
+
+	// minimum_confirmations
+	let min_c = parse_required(args, "minimum_confirmations")?;
+	let min_c = parse_u64(min_c, "minimum_confirmations")?;
+
+	// selection_strategy
+	let selection_strategy = parse_required(args, "selection_strategy")?;
+
+	// estimate_selection_strategies
+	let estimate_selection_strategies = args.is_present("estimate_selection_strategies");
+
+	// method
+	let method = parse_required(args, "method")?;
+
+	// dest
+	let dest = {
+		if method == "self" {
+			match args.value_of("dest") {
+				Some(d) => d,
+				None => "default",
+			}
+		} else {
+			if !estimate_selection_strategies {
+				parse_required(args, "dest")?
+			} else {
+				""
+			}
+		}
+	};
+	if !estimate_selection_strategies
+		&& method == "http"
+		&& !dest.starts_with("http://")
+		&& !dest.starts_with("https://")
+	{
+		let msg = format!(
+			"HTTP Destination should start with http://: or https://: {}",
+			dest,
+		);
+		return Err(ParseError::ArgumentError(msg));
+	}
+
+	// change_outputs
+	let change_outputs = parse_required(args, "change_outputs")?;
+	let change_outputs = parse_u64(change_outputs, "change_outputs")? as usize;
+
+	// fluff
+	let fluff = args.is_present("fluff");
+
+	// max_outputs
+	let max_outputs = 500;
+
+	// target slate version to create/send
+	let target_slate_version = {
+		match args.is_present("slate_version") {
+			true => {
+				let v = parse_required(args, "slate_version")?;
+				Some(parse_u64(v, "slate_version")? as u16)
+			}
+			false => None,
+		}
+	};
+
+	Ok(command::AssetArgs {
+		asset: asset,
+		amount: amount,
+		message: message,
+		minimum_confirmations: min_c,
+		selection_strategy: selection_strategy.to_owned(),
+		estimate_selection_strategies,
+		method: method.to_owned(),
+		dest: dest.to_owned(),
+		change_outputs: change_outputs,
+		fluff: fluff,
+		max_outputs: max_outputs,
+		target_slate_version: target_slate_version,
+	})
+}
+
 pub fn parse_receive_args(receive_args: &ArgMatches) -> Result<command::ReceiveArgs, ParseError> {
 	// message
 	let message = match receive_args.is_present("message") {
@@ -807,6 +911,14 @@ pub fn wallet_command(
 		("send", Some(args)) => {
 			let a = arg_parse!(parse_send_args(&args));
 			command::send(
+				inst_wallet(),
+				a,
+				wallet_config.dark_background_color_scheme.unwrap_or(true),
+			)
+		}
+		("asset", Some(args)) => {
+			let a = arg_parse!(parse_asset_args(&args));
+			command::asset(
 				inst_wallet(),
 				a,
 				wallet_config.dark_background_color_scheme.unwrap_or(true),

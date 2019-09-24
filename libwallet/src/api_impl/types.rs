@@ -15,6 +15,7 @@
 //! Types specific to the wallet api, mostly argument serialization
 
 use crate::kepler_core::core::asset::Asset;
+use crate::kepler_core::core::issued_asset::AssetAction;
 use crate::kepler_core::core::{Output, TxKernel};
 use crate::kepler_core::libtx::secp_ser;
 use crate::kepler_keychain::Identifier;
@@ -97,6 +98,12 @@ pub struct InitTxArgs {
 	/// Sender arguments. If present, the underlying function will also attempt to send the
 	/// transaction to a destination and optionally finalize the result
 	pub send_args: Option<InitTxSendArgs>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Default)]
+pub struct InitAssetTxArgs {
+	pub tx: InitTxArgs,
+	pub asset: Vec<AssetAction>,
 }
 
 /// Send TX API Args, for convenience functionality that inits the transaction and sends

@@ -21,6 +21,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::core::core::asset::Asset;
+use crate::core::core::issued_asset::AssetAction;
 use crate::core::core::Transaction;
 use crate::impls::{HTTPWalletCommAdapter, KeybaseWalletCommAdapter};
 use crate::keychain::{Identifier, Keychain};
@@ -487,12 +488,12 @@ where
 	/// }
 	/// ```
 
-	pub fn init_send_tx(&self, args: InitTxArgs) -> Result<Slate, Error> {
+	pub fn init_send_tx(&self, args: InitTxArgs, assets: Vec<AssetAction>) -> Result<Slate, Error> {
 		let send_args = args.send_args.clone();
 		let mut slate = {
 			let mut w = self.wallet.lock();
 			w.open_with_credentials()?;
-			let slate = owner::init_send_tx(&mut *w, args, self.doctest_mode)?;
+			let slate = owner::init_send_tx(&mut *w, args, self.doctest_mode, assets)?; // TODO
 			w.close()?;
 			slate
 		};
@@ -626,7 +627,7 @@ where
 	pub fn process_invoice_tx(&self, slate: &Slate, args: InitTxArgs) -> Result<Slate, Error> {
 		let mut w = self.wallet.lock();
 		w.open_with_credentials()?;
-		let slate = owner::process_invoice_tx(&mut *w, slate, args, self.doctest_mode)?;
+		let slate = owner::process_invoice_tx(&mut *w, slate, args, self.doctest_mode, vec![])?;
 		w.close()?;
 		Ok(slate)
 	}

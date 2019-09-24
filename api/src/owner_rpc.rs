@@ -19,8 +19,8 @@ use crate::core::core::asset::Asset;
 use crate::core::core::Transaction;
 use crate::keychain::{Identifier, Keychain};
 use crate::libwallet::{
-	AcctPathMapping, ErrorKind, InitTxArgs, IssueInvoiceTxArgs, NodeClient, NodeHeightResult,
-	OutputCommitMapping, Slate, TxLogEntry, WalletBackend, WalletInfo,
+	AcctPathMapping, ErrorKind, InitAssetTxArgs, InitTxArgs, IssueInvoiceTxArgs, NodeClient,
+	NodeHeightResult, OutputCommitMapping, Slate, TxLogEntry, WalletBackend, WalletInfo,
 };
 use crate::Owner;
 use easy_jsonrpc;
@@ -403,6 +403,96 @@ pub trait OwnerRpc {
 	*/
 
 	fn init_send_tx(&self, args: InitTxArgs) -> Result<Slate, ErrorKind>;
+
+	/**
+		Networked version of [Owner::init_send_tx](struct.Owner.html#method.init_send_tx).
+
+	```
+		# kepler_wallet_api::doctest_helper_json_rpc_owner_assert_response!(
+		# r#"
+		{
+			"jsonrpc": "2.0",
+			"method": "init_send_tx",
+			"params": {
+				"args": {
+					"src_acct_name": null,
+					"amount": "100000000000",
+					"minimum_confirmations": 2,
+					"max_outputs": 500,
+					"num_change_outputs": 1,
+					"selection_strategy_is_use_all": true,
+					"message": "my message",
+					"target_slate_version": null,
+					"send_args": null
+				}
+			},
+			"id": 1
+		}
+		# "#
+		# ,
+		# r#"
+		{
+	  "id": 1,
+	  "jsonrpc": "2.0",
+	  "result": {
+		"Ok": {
+		  "amount": "100000000000",
+		  "fee": "8000000",
+		  "height": "4",
+		  "id": "0436430c-2b02-624c-2032-570501212b00",
+		  "lock_height": "0",
+		  "num_participants": 2,
+		  "participant_data": [
+			{
+			  "id": "0",
+			  "message": "my message",
+			  "message_sig": "8f07ddd5e9f5179cff19486034181ed76505baaad53e5d994064127b56c5841b691cf3d54f980573a705782a74df2123f98547b49c40a013b5b69c7bca71aeee",
+			  "part_sig": null,
+			  "public_blind_excess": "027da3bc74bdfa9d57bc068ba0fbc3157cb8d03428806a75f7f28293cb1920e074",
+			  "public_nonce": "031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+			}
+		  ],
+		  "tx": {
+			"body": {
+			  "inputs": [
+				{
+				  "commit": "09016c5a3376e054e20402797e4367605e30d032eda4a8752fbe05ffd8659a7fa8",
+				  "features": "Coinbase"
+				}
+			  ],
+			  "kernels": [
+				{
+				  "excess": "000000000000000000000000000000000000000000000000000000000000000000",
+				  "excess_sig": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+				  "features": "Plain",
+				  "fee": "8000000",
+				  "lock_height": "0"
+				}
+			  ],
+			  "outputs": [
+				{
+				  "commit": "097465837a7152837e0b12ed57b3cb9cfd65a3b1ece8d37333c3bd75ba80262012",
+				  "features": "Plain",
+				  "proof": "2209203deba0a66e16e726ff52ab630683ee8a5a80b9fa78573a6684a1264808c435e5e2c5307558655ed44a4881c00a5e5967ffdf3d42865ec3cf776ce0a96008fdaa84cc34496848714fe445c9b5f154c93baabf323ca6b6dfe4aa157b9eee7c0aa565a7364dcd03155e6c787de2a70d25d6d6382d5293e9f5bd5dc5b17266e3dfad50194d5e0f71fd92a57e964e3a4e53eda46ac6121e5057a5516a80fa9b460a3e0d8e34dd58c3e2d5b33ec5c34a18c1d7d27cfad2d111899621be9fdac31e5899fac91a5028a946b73240f64390dd4ff86ba58c5b81f07d82441ca01f2f3739ce83db69fa2bb1c416060795b2c3e87bcc48dc95386c990b236ba4e26ab01d8b08cc9f43b097c8f86e46727e2a215af0235203aa0ed1ba78321e25e758b045bb9a3561f13b903aaac9d1794f4e003e0984fb43879f237cd8ea22263cc28efeda60f7fd03c19b5961429a8dfa88cf662590fb8cabb2a3d679f8375c93da1a3853031780ddd14eca5b33d6dd921492d468b1822f68bd831f26e0eb1c03440662818418f44423264d38565083107942a9481ddfae04d364eddc64d30e817fe54f41a592e65d852c3fa019eb9151726f9180c81d4ce349d78ea17c84e061854c51388d167cdf5f0845d529ef37922b33e28356fcdcd94d699a965411f107aaee95d1560e783b9aca2f9c4a897e777e4edcbc426c5252494a0a32a15d63807c068800e85b1ed9f51e1326dd06e751ed18aaa0b3618096e3f5664a43e125f1a27d7aaf456ea689755468393eb56cf4a2b4a04be738825c1d31e5baee405c0e2943fccdb1e9f1ac9a6d9964606d49e12d198d291334bc4acd3bdf65adabc35167825f0c1da5a6781e367a927215ccf5f378f6832b7af91b23161c6e07fb2471c54f5e49cb8b22fb51a237fe0866bf08e85df2624df2fbf567e5f32375b1f409b000417b00"
+				}
+			  ]
+			},
+			"offset": "d202964900000000d302964900000000d402964900000000d502964900000000"
+		  },
+		  "version_info": {
+				"orig_version": 2,
+				"version": 2,
+				"block_header_version": 1
+		  }
+		}
+	  }
+	}
+		# "#
+		# ,4, false, false, false);
+	```
+	*/
+
+	fn init_asset_tx(&self, args: InitAssetTxArgs) -> Result<Slate, ErrorKind>;
 
 	/**
 		Networked version of [Owner::issue_invoice_tx](struct.Owner.html#method.issue_invoice_tx).
@@ -1280,7 +1370,11 @@ where
 	}
 
 	fn init_send_tx(&self, args: InitTxArgs) -> Result<Slate, ErrorKind> {
-		Owner::init_send_tx(self, args).map_err(|e| e.kind())
+		Owner::init_send_tx(self, args, vec![]).map_err(|e| e.kind())
+	}
+
+	fn init_asset_tx(&self, args: InitAssetTxArgs) -> Result<Slate, ErrorKind> {
+		Owner::init_send_tx(self, args.tx, args.asset).map_err(|e| e.kind())
 	}
 
 	fn issue_invoice_tx(&self, args: IssueInvoiceTxArgs) -> Result<Slate, ErrorKind> {
@@ -1410,7 +1504,7 @@ pub fn run_doctest_owner(
 			selection_strategy_is_use_all: true,
 			..Default::default()
 		};
-		let mut slate = api_impl::owner::init_send_tx(&mut *w, args, true).unwrap();
+		let mut slate = api_impl::owner::init_send_tx(&mut *w, args, true, vec![]).unwrap();
 		println!("INITIAL SLATE");
 		println!("{}", serde_json::to_string_pretty(&slate).unwrap());
 		{

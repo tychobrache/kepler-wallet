@@ -36,7 +36,7 @@ use crate::impls::{
 	LMDBBackend, NullWalletCommAdapter,
 };
 use crate::impls::{HTTPNodeClient, WalletSeed};
-use crate::libwallet::{InitTxArgs, IssueInvoiceTxArgs, NodeClient, WalletInst};
+use crate::libwallet::{InitAssetTxArgs, InitTxArgs, IssueInvoiceTxArgs, NodeClient, WalletInst};
 use crate::{controller, display};
 
 /// Arguments common to all wallet commands
@@ -260,7 +260,7 @@ pub fn send(
 						estimate_only: Some(true),
 						..Default::default()
 					};
-					let slate = api.init_send_tx(init_args).unwrap();
+					let slate = api.init_send_tx(init_args, vec![]).unwrap();
 					(strategy, slate.amount, slate.fee)
 				})
 				.collect();
@@ -279,7 +279,130 @@ pub fn send(
 				send_args: None,
 				..Default::default()
 			};
-			let result = api.init_send_tx(init_args);
+			let result = api.init_send_tx(init_args, vec![]);
+			let mut slate = match result {
+				Ok(s) => {
+					info!(
+						"Tx created: {} kepler to {} (strategy '{}')",
+						core::amount_to_hr_string(args.amount, false),
+						args.dest,
+						args.selection_strategy,
+					);
+					s
+				}
+				Err(e) => {
+					info!("Tx not created: {}", e);
+					return Err(e);
+				}
+			};
+			let adapter = match args.method.as_str() {
+				"http" => HTTPWalletCommAdapter::new(),
+				"file" => FileWalletCommAdapter::new(),
+				"keybase" => KeybaseWalletCommAdapter::new(),
+				"self" => NullWalletCommAdapter::new(),
+				_ => NullWalletCommAdapter::new(),
+			};
+			if adapter.supports_sync() {
+				slate = adapter.send_tx_sync(&args.dest, &slate)?;
+				api.tx_lock_outputs(&slate, 0)?;
+				if args.method == "self" {
+					controller::foreign_single_use(wallet, |api| {
+						slate = api.receive_tx(&slate, Some(&args.dest), None)?;
+						Ok(())
+					})?;
+				}
+				if let Err(e) = api.verify_slate_messages(&slate) {
+					error!("Error validating participant messages: {}", e);
+					return Err(e);
+				}
+				slate = api.finalize_tx(&slate)?;
+			} else {
+				adapter.send_tx_async(&args.dest, &slate)?;
+				api.tx_lock_outputs(&slate, 0)?;
+			}
+			if adapter.supports_sync() {
+				let result = api.post_tx(&slate.tx, args.fluff);
+				match result {
+					Ok(_) => {
+						info!("Tx sent ok",);
+						return Ok(());
+					}
+					Err(e) => {
+						error!("Tx sent fail: {}", e);
+						return Err(e);
+					}
+				}
+			}
+		}
+		Ok(())
+	})?;
+	Ok(())
+}
+
+/// Arguments for the asset command
+pub struct AssetArgs {
+	pub asset: Asset,
+	pub amount: u64,
+	pub message: Option<String>,
+	pub minimum_confirmations: u64,
+	pub selection_strategy: String,
+	pub estimate_selection_strategies: bool,
+	pub method: String,
+	pub dest: String,
+	pub change_outputs: usize,
+	pub fluff: bool,
+	pub max_outputs: usize,
+	pub target_slate_version: Option<u16>,
+}
+
+// TODO asset command
+pub fn asset(
+	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
+	args: AssetArgs,
+	dark_scheme: bool,
+) -> Result<(), Error> {
+	controller::owner_single_use(wallet.clone(), |api| {
+		if args.estimate_selection_strategies {
+			let strategies = vec!["smallest", "all"]
+				.into_iter()
+				.map(|strategy| {
+					let init_args = InitAssetTxArgs {
+						tx: InitTxArgs {
+							asset: args.asset,
+							src_acct_name: None,
+							amount: args.amount,
+							minimum_confirmations: args.minimum_confirmations,
+							max_outputs: args.max_outputs as u32,
+							num_change_outputs: args.change_outputs as u32,
+							selection_strategy_is_use_all: strategy == "all",
+							estimate_only: Some(true),
+							..Default::default()
+						},
+						asset: vec![], // TODO
+					};
+					let slate = api.init_send_tx(init_args.tx, init_args.asset).unwrap();
+					(strategy, slate.amount, slate.fee)
+				})
+				.collect();
+			display::estimate(args.amount, strategies, dark_scheme);
+		} else {
+			let init_args = InitAssetTxArgs {
+				tx: InitTxArgs {
+					asset: args.asset,
+					src_acct_name: None,
+					amount: args.amount,
+					minimum_confirmations: args.minimum_confirmations,
+					max_outputs: args.max_outputs as u32,
+					num_change_outputs: args.change_outputs as u32,
+					selection_strategy_is_use_all: args.selection_strategy == "all",
+					message: args.message.clone(),
+					target_slate_version: args.target_slate_version,
+					send_args: None,
+					..Default::default()
+				},
+				asset: vec![], //TODO
+			};
+			let result = api.init_send_tx(init_args.tx, init_args.asset);
 			let mut slate = match result {
 				Ok(s) => {
 					info!(
@@ -495,7 +618,7 @@ pub fn process_invoice(
 						estimate_only: Some(true),
 						..Default::default()
 					};
-					let slate = api.init_send_tx(init_args).unwrap();
+					let slate = api.init_send_tx(init_args, vec![]).unwrap();
 					(strategy, slate.amount, slate.fee)
 				})
 				.collect();

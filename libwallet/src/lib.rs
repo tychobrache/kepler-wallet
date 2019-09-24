@@ -56,8 +56,8 @@ pub use crate::slate_versions::{
 	SlateVersion, VersionedSlate, CURRENT_SLATE_VERSION, KEPLER_BLOCK_HEADER_VERSION,
 };
 pub use api_impl::types::{
-	BlockFees, CbData, InitTxArgs, InitTxSendArgs, IssueInvoiceTxArgs, NodeHeightResult,
-	OutputCommitMapping, SendTXArgs, VersionInfo,
+	BlockFees, CbData, InitAssetTxArgs, InitTxArgs, InitTxSendArgs, IssueInvoiceTxArgs,
+	NodeHeightResult, OutputCommitMapping, SendTXArgs, VersionInfo,
 };
 pub use internal::restore::{check_repair, restore};
 pub use types::{
