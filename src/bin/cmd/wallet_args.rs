@@ -13,8 +13,10 @@
 // limitations under the License.
 
 use crate::api::TLSConfig;
+use crate::core::core::issued_asset::{AssetAction, IssuedAsset};
 use crate::util::file::get_first_line;
 use crate::util::{Mutex, ZeroingString};
+
 /// Argument parsing and error handling for wallet commands
 use clap::ArgMatches;
 use failure::Fail;
@@ -494,6 +496,45 @@ pub fn parse_send_args(args: &ArgMatches) -> Result<command::SendArgs, ParseErro
 }
 
 pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseError> {
+	// action
+	let action = AssetAction::None;
+	let action_type = parse_required(args, "action")?;
+
+	let action = match action_type {
+		"new" => {
+			let supply_str = parse_required(args, "supply")?;
+			let supply = core::core::amount_from_hr_string(supply_str).unwrap();
+			let owner = parse_required(args, "owner")?.into();
+			let mintable_str = parse_required(args, "mintable")?;
+			let mintable = if core::core::amount_from_hr_string(mintable_str).unwrap() == 0 {
+				false
+			} else {
+				true
+			};
+			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
+			let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset);
+			AssetAction::New(new_asset)
+		}
+		"issue" => {
+			let amount_str = parse_required(args, "amount")?;
+			let amount = core::core::amount_from_hr_string(amount_str).unwrap();
+			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
+			AssetAction::Issue(asset, amount.into())
+		}
+		"burn" => {
+			let amount_str = parse_required(args, "amount")?;
+			let amount = core::core::amount_from_hr_string(amount_str).unwrap();
+			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
+			AssetAction::Burn(asset, amount.into())
+		}
+		"owner" => {
+			let owner = args.value_of("owner").and_then(|s| Some(s.into())).unwrap();
+			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
+			AssetAction::ChangeOwner(asset, owner)
+		}
+		_ => AssetAction::None,
+	};
+
 	// amount
 	let asset = args
 		.value_of("asset")
@@ -501,19 +542,7 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 		.or(Some(Default::default()))
 		.unwrap();
 
-	let amount = parse_required(args, "amount")?;
-	let amount = core::core::amount_from_hr_string(amount);
-	let amount = match amount {
-		Ok(a) => a,
-		Err(e) => {
-			let msg = format!(
-				"Could not parse amount as a number with optional decimal point. e={}",
-				e
-			);
-			return Err(ParseError::ArgumentError(msg));
-		}
-	};
-
+	let amount = core::core::amount_from_hr_string("0").unwrap();
 	// message
 	let message = match args.is_present("message") {
 		true => Some(args.value_of("message").unwrap().to_owned()),
@@ -594,6 +623,7 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 		fluff: fluff,
 		max_outputs: max_outputs,
 		target_slate_version: target_slate_version,
+		action: action,
 	})
 }
 

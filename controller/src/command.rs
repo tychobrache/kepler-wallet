@@ -27,6 +27,7 @@ use uuid::Uuid;
 use crate::api::TLSConfig;
 use crate::core::core;
 use crate::core::core::asset::Asset;
+use crate::core::core::issued_asset::AssetAction;
 use crate::keychain;
 
 use crate::config::WalletConfig;
@@ -353,9 +354,9 @@ pub struct AssetArgs {
 	pub fluff: bool,
 	pub max_outputs: usize,
 	pub target_slate_version: Option<u16>,
+	pub action: AssetAction,
 }
 
-// TODO asset command
 pub fn asset(
 	wallet: Arc<Mutex<dyn WalletInst<impl NodeClient + 'static, keychain::ExtKeychain>>>,
 	args: AssetArgs,
@@ -378,7 +379,7 @@ pub fn asset(
 							estimate_only: Some(true),
 							..Default::default()
 						},
-						asset: vec![], // TODO
+						asset: vec![args.action],
 					};
 					let slate = api.init_send_tx(init_args.tx, init_args.asset).unwrap();
 					(strategy, slate.amount, slate.fee)
@@ -400,7 +401,7 @@ pub fn asset(
 					send_args: None,
 					..Default::default()
 				},
-				asset: vec![], //TODO
+				asset: vec![args.action],
 			};
 			let result = api.init_send_tx(init_args.tx, init_args.asset);
 			let mut slate = match result {
