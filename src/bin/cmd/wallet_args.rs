@@ -500,7 +500,6 @@ pub fn parse_send_args(args: &ArgMatches) -> Result<command::SendArgs, ParseErro
 
 pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseError> {
 	// action
-	let action = AssetAction::None;
 	let action_type = parse_required(args, "action")?;
 	let secret_key_string = parse_required(args, "secret_key")?;
 	let secp = Secp256k1::with_caps(ContextFlag::SignOnly);
