@@ -16,6 +16,9 @@ use crate::api::TLSConfig;
 use crate::core::core::issued_asset::{AssetAction, IssuedAsset};
 use crate::util::file::get_first_line;
 use crate::util::{Mutex, ZeroingString};
+use kepler_wallet_util::kepler_util::secp::{
+	key::PublicKey, key::SecretKey, ContextFlag, Message, Secp256k1, Signature,
+};
 
 /// Argument parsing and error handling for wallet commands
 use clap::ArgMatches;
@@ -499,12 +502,15 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 	// action
 	let action = AssetAction::None;
 	let action_type = parse_required(args, "action")?;
+	let secret_key_string = parse_required(args, "secret_key")?;
+	let secp = Secp256k1::with_caps(ContextFlag::SignOnly);
+	let secret_key = SecretKey::from_hex(secret_key_string.to_owned()).unwrap();
 
 	let action = match action_type {
 		"new" => {
 			let supply_str = parse_required(args, "supply")?;
 			let supply = core::core::amount_from_hr_string(supply_str).unwrap();
-			let owner = parse_required(args, "owner")?.into();
+			let owner = PublicKey::from_secret_key(&secp, &secret_key).unwrap();
 			let mintable_str = parse_required(args, "mintable")?;
 			let mintable = if core::core::amount_from_hr_string(mintable_str).unwrap() == 0 {
 				false
@@ -513,25 +519,18 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 			};
 			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
 			let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset);
-			AssetAction::New(new_asset)
+			let message = bincode::serialize(&new_asset).unwrap();
+			let signature = secp
+				.sign(&Message::from_slice(&message).unwrap(), &secret_key)
+				.unwrap();
+			AssetAction::New(new_asset, signature)
 		}
-		"issue" => {
-			let amount_str = parse_required(args, "amount")?;
-			let amount = core::core::amount_from_hr_string(amount_str).unwrap();
-			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
-			AssetAction::Issue(asset, amount.into())
-		}
-		"burn" => {
-			let amount_str = parse_required(args, "amount")?;
-			let amount = core::core::amount_from_hr_string(amount_str).unwrap();
-			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
-			AssetAction::Burn(asset, amount.into())
-		}
-		"owner" => {
-			let owner = args.value_of("owner").and_then(|s| Some(s.into())).unwrap();
-			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
-			AssetAction::ChangeOwner(asset, owner)
-		}
+		//"owner" => {
+		//			let owner = args.value_of("owner").and_then(|s| Some(s.into())).unwrap();
+		//let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
+		//let message = bincode::serialize(&()new_asset).unwrap();
+		//AssetAction::ChangeOwner(asset, owner)
+		//}
 		_ => AssetAction::None,
 	};
 

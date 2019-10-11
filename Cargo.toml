@@ -29,6 +29,7 @@ prettytable-rs = "0.7"
 log = "0.4"
 linefeed = "0.5"
 semver = "0.9"
+bincode = "1"
 
 kepler_wallet_api = { path = "./api", version = "2.0.0" }
 kepler_wallet_impls = { path = "./impls", version = "2.0.0" }
