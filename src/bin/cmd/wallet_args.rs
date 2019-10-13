@@ -503,20 +503,27 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 	let action_type = parse_required(args, "action")?;
 	let secret_key_string = parse_required(args, "secret_key")?;
 	let secp = Secp256k1::with_caps(ContextFlag::SignOnly);
-	let secret_key = SecretKey::from_hex(secret_key_string.to_owned()).unwrap();
+	let secret_key = SecretKey::from_hex(secret_key_string.to_owned()).or(Err(
+		ParseError::ArgumentError("parse secret key failure!".to_owned()),
+	))?;
+	let parameters_str = parse_required(args, "parameters")?;
+	let parameters: Vec<&str> = parameters_str.split(',').map(|s| s.trim()).collect();
 
 	let action = match action_type {
 		"new" => {
-			let supply_str = parse_required(args, "supply")?;
-			let supply = core::core::amount_from_hr_string(supply_str).unwrap();
+			if parameters.len() != 3 {
+				return Err(ParseError::ArgumentError(
+					"parse asset parameters failure!".to_owned(),
+				));
+			}
+			let supply = core::core::amount_from_hr_string(parameters[0]).unwrap();
 			let owner = PublicKey::from_secret_key(&secp, &secret_key).unwrap();
-			let mintable_str = parse_required(args, "mintable")?;
-			let mintable = if core::core::amount_from_hr_string(mintable_str).unwrap() == 0 {
+			let mintable = if core::core::amount_from_hr_string(parameters[1]).unwrap() == 0 {
 				false
 			} else {
 				true
 			};
-			let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
+			let asset = Some(parameters[2].into()).unwrap();
 			let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset);
 			let message = bincode::serialize(&new_asset).unwrap();
 			let signature = secp
@@ -532,13 +539,6 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 		//}
 		_ => AssetAction::None,
 	};
-
-	// amount
-	let asset = args
-		.value_of("asset")
-		.and_then(|s| Some(s.into()))
-		.or(Some(Default::default()))
-		.unwrap();
 
 	// selection_strategy
 	let selection_strategy = parse_required(args, "selection_strategy")?;
@@ -598,7 +598,7 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 	};
 
 	Ok(command::AssetArgs {
-		asset: asset,
+		asset: Default::default(),
 		amount: 0,                // default
 		message: None,            // default
 		minimum_confirmations: 6, // default

@@ -145,6 +145,11 @@ subcommands:
             short: a
             long: action
             takes_value: true
+        - parameters:
+            help: parameters for diff asset action.
+            short: p
+            long: parameters
+            takes_value: true
         - secret_key:
             help: secret key for owner in this asset.
             short: s
