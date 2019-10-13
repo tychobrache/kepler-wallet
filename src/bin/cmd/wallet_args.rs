@@ -540,17 +540,6 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 		.or(Some(Default::default()))
 		.unwrap();
 
-	let amount = core::core::amount_from_hr_string("0").unwrap();
-	// message
-	let message = match args.is_present("message") {
-		true => Some(args.value_of("message").unwrap().to_owned()),
-		false => None,
-	};
-
-	// minimum_confirmations
-	let min_c = parse_required(args, "minimum_confirmations")?;
-	let min_c = parse_u64(min_c, "minimum_confirmations")?;
-
 	// selection_strategy
 	let selection_strategy = parse_required(args, "selection_strategy")?;
 
@@ -610,9 +599,9 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 
 	Ok(command::AssetArgs {
 		asset: asset,
-		amount: amount,
-		message: message,
-		minimum_confirmations: min_c,
+		amount: 0,                // default
+		message: None,            // default
+		minimum_confirmations: 6, // default
 		selection_strategy: selection_strategy.to_owned(),
 		estimate_selection_strategies,
 		method: method.to_owned(),
