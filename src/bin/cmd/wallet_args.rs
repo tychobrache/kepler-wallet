@@ -527,7 +527,7 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 			let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset);
 			let message = bincode::serialize(&new_asset).unwrap();
 			let signature = secp
-				.sign(&Message::from_slice(&message).unwrap(), &secret_key)
+				.sign(&Message::from_bytes(&message).unwrap(), &secret_key)
 				.unwrap();
 			AssetAction::New(new_asset, signature)
 		}
@@ -540,77 +540,20 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 		_ => AssetAction::None,
 	};
 
-	// selection_strategy
-	let selection_strategy = parse_required(args, "selection_strategy")?;
-
-	// estimate_selection_strategies
-	let estimate_selection_strategies = args.is_present("estimate_selection_strategies");
-
-	// method
-	let method = parse_required(args, "method")?;
-
-	// dest
-	let dest = {
-		if method == "self" {
-			match args.value_of("dest") {
-				Some(d) => d,
-				None => "default",
-			}
-		} else {
-			if !estimate_selection_strategies {
-				parse_required(args, "dest")?
-			} else {
-				""
-			}
-		}
-	};
-	if !estimate_selection_strategies
-		&& method == "http"
-		&& !dest.starts_with("http://")
-		&& !dest.starts_with("https://")
-	{
-		let msg = format!(
-			"HTTP Destination should start with http://: or https://: {}",
-			dest,
-		);
-		return Err(ParseError::ArgumentError(msg));
-	}
-
-	// change_outputs
-	let change_outputs = parse_required(args, "change_outputs")?;
-	let change_outputs = parse_u64(change_outputs, "change_outputs")? as usize;
-
-	// fluff
-	let fluff = args.is_present("fluff");
-
-	// max_outputs
-	let max_outputs = 500;
-
-	// target slate version to create/send
-	let target_slate_version = {
-		match args.is_present("slate_version") {
-			true => {
-				let v = parse_required(args, "slate_version")?;
-				Some(parse_u64(v, "slate_version")? as u16)
-			}
-			false => None,
-		}
-	};
-
 	Ok(command::AssetArgs {
 		asset: Default::default(),
+		action: action,
 		amount: 0,                // default
 		message: None,            // default
 		minimum_confirmations: 6, // default
-		selection_strategy: selection_strategy.to_owned(),
-		estimate_selection_strategies,
-		method: method.to_owned(),
-		dest: dest.to_owned(),
-		change_outputs: change_outputs,
-		fluff: fluff,
-		max_outputs: max_outputs,
-		target_slate_version: target_slate_version,
-		action: action,
+		selection_strategy: "smallest".to_owned(),
+		estimate_selection_strategies: false, // default
+		method: "self".to_owned(),            // default
+		dest: "default".to_owned(),           // default
+		change_outputs: 0,                    // default
+		fluff: false,                         // default
+		max_outputs: 500,                     // default
+		target_slate_version: None,           // default
 	})
 }
 
