@@ -439,6 +439,7 @@ pub fn asset(
 					error!("Error validating participant messages: {}", e);
 					return Err(e);
 				}
+
 				slate = api.finalize_tx(&slate)?;
 			} else {
 				adapter.send_tx_async(&args.dest, &slate)?;

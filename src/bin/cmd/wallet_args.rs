@@ -543,14 +543,14 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 	Ok(command::AssetArgs {
 		asset: Default::default(),
 		action: action,
-		amount: 0,                // default
-		message: None,            // default
-		minimum_confirmations: 6, // default
-		selection_strategy: "smallest".to_owned(),
+		amount: 0,                 // default
+		message: None,             // default
+		minimum_confirmations: 10, // default
+		selection_strategy: "all".to_owned(),
 		estimate_selection_strategies: false, // default
 		method: "self".to_owned(),            // default
 		dest: "default".to_owned(),           // default
-		change_outputs: 0,                    // default
+		change_outputs: 1,                    // default
 		fluff: false,                         // default
 		max_outputs: 500,                     // default
 		target_slate_version: None,           // default
