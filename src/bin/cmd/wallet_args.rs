@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::api::TLSConfig;
+use crate::core::core::asset::Asset;
 use crate::core::core::issued_asset::{AssetAction, IssuedAsset};
 use crate::util::file::get_first_line;
 use crate::util::{Mutex, ZeroingString};
@@ -523,13 +524,14 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 			} else {
 				true
 			};
-			let asset = Some(parameters[2].into()).unwrap();
-			let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset);
+			let asset_str: &str = Some(parameters[2].into()).unwrap();
+			let asset: Asset = asset_str.into();
+			let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset.clone());
 			let message = bincode::serialize(&new_asset).unwrap();
 			let signature = secp
 				.sign(&Message::from_bytes(&message).unwrap(), &secret_key)
 				.unwrap();
-			AssetAction::New(new_asset, signature)
+			AssetAction::New(asset, new_asset, signature)
 		}
 		//"owner" => {
 		//			let owner = args.value_of("owner").and_then(|s| Some(s.into())).unwrap();
@@ -537,7 +539,11 @@ pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseEr
 		//let message = bincode::serialize(&()new_asset).unwrap();
 		//AssetAction::ChangeOwner(asset, owner)
 		//}
-		_ => AssetAction::None,
+		_ => {
+			return Err(ParseError::ArgumentError(
+				"parse action failure!".to_owned(),
+			))
+		}
 	};
 
 	Ok(command::AssetArgs {
