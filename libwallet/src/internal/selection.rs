@@ -65,7 +65,7 @@ where
 	let keychain = wallet.keychain();
 
 	while (!asset_actions.is_empty()) {
-		elems.push(build::asset(asset_actions.pop().unwrap()));
+		elems.push(build::mint(asset_actions.pop().unwrap()));
 	}
 
 	let blinding = slate.add_transaction_elements(keychain, &ProofBuilder::new(keychain), elems)?;
@@ -193,6 +193,8 @@ where
 	C: NodeClient,
 	K: Keychain,
 {
+	// TODO Mint Output. use AssetAction
+
 	// Create a potential output for this transaction
 	let key_id = keys::next_available_key(wallet).unwrap();
 	let keychain = wallet.keychain().clone();
@@ -278,6 +280,7 @@ where
 	K: Keychain,
 	B: ProofBuild,
 {
+	// TODO mint add fee.
 	let (coins, _total, amount, fee) = select_coins_and_fee(
 		wallet,
 		amount,

@@ -500,67 +500,67 @@ pub fn parse_send_args(args: &ArgMatches) -> Result<command::SendArgs, ParseErro
 }
 
 pub fn parse_asset_args(args: &ArgMatches) -> Result<command::AssetArgs, ParseError> {
-    // action
-    let action_type = parse_required(args, "action")?;
-    let secret_key_string = parse_required(args, "secret_key")?;
-    let secp = Secp256k1::with_caps(ContextFlag::SignOnly);
-    let secret_key = SecretKey::from_hex(secret_key_string.to_owned()).or(Err(
-	ParseError::ArgumentError("parse secret key failure!".to_owned()),
-    ))?;
-    let parameters_str = parse_required(args, "parameters")?;
-    let parameters: Vec<&str> = parameters_str.split(',').map(|s| s.trim()).collect();
+	// action
+	let action_type = parse_required(args, "action")?;
+	let secret_key_string = parse_required(args, "secret_key")?;
+	let secp = Secp256k1::with_caps(ContextFlag::SignOnly);
+	let secret_key = SecretKey::from_hex(secret_key_string.to_owned()).or(Err(
+		ParseError::ArgumentError("parse secret key failure!".to_owned()),
+	))?;
+	let parameters_str = parse_required(args, "parameters")?;
+	let parameters: Vec<&str> = parameters_str.split(',').map(|s| s.trim()).collect();
 
-    let (action, asset, amount) = match action_type {
-	"new" => {
-	    if parameters.len() != 3 {
-		return Err(ParseError::ArgumentError(
-		    "parse asset parameters failure!".to_owned(),
-		));
-	    }
-	    let supply = core::core::amount_from_hr_string(parameters[0]).unwrap();
-	    let owner = PublicKey::from_secret_key(&secp, &secret_key).unwrap();
-	    let mintable = if core::core::amount_from_hr_string(parameters[1]).unwrap() == 0 {
-		false
-	    } else {
-		true
-	    };
-	    let asset_str: &str = Some(parameters[2].into()).unwrap();
-	    let asset: Asset = asset_str.into();
-	    let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset.clone());
-	    let message = bincode::serialize(&new_asset).unwrap();
-	    let signature = secp
-		.sign(&Message::from_bytes(&message).unwrap(), &secret_key)
-		.unwrap();
-	    (AssetAction::New(asset, new_asset, signature), asset, supply)
-	}
-	//"owner" => {
-	//			let owner = args.value_of("owner").and_then(|s| Some(s.into())).unwrap();
-	//let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
-	//let message = bincode::serialize(&()new_asset).unwrap();
-	//AssetAction::ChangeOwner(asset, owner)
-	//}
-	_ => {
-	    return Err(ParseError::ArgumentError(
-		"parse action failure!".to_owned(),
-	    ))
-	}
-    };
+	let action = match action_type {
+		"new" => {
+			if parameters.len() != 3 {
+				return Err(ParseError::ArgumentError(
+					"parse asset parameters failure!".to_owned(),
+				));
+			}
+			let supply = core::core::amount_from_hr_string(parameters[0]).unwrap();
+			let owner = PublicKey::from_secret_key(&secp, &secret_key).unwrap();
+			let mintable = if core::core::amount_from_hr_string(parameters[1]).unwrap() == 0 {
+				false
+			} else {
+				true
+			};
+			let asset_str: &str = Some(parameters[2].into()).unwrap();
+			let asset: Asset = asset_str.into();
+			let new_asset = IssuedAsset::new(supply.into(), owner, mintable, asset.clone());
+			let message = bincode::serialize(&new_asset).unwrap();
+			let signature = secp
+				.sign(&Message::from_bytes(&message).unwrap(), &secret_key)
+				.unwrap();
+			AssetAction::New(asset, new_asset, signature)
+		}
+		//"owner" => {
+		//			let owner = args.value_of("owner").and_then(|s| Some(s.into())).unwrap();
+		//let asset = args.value_of("asset").and_then(|s| Some(s.into())).unwrap();
+		//let message = bincode::serialize(&()new_asset).unwrap();
+		//AssetAction::ChangeOwner(asset, owner)
+		//}
+		_ => {
+			return Err(ParseError::ArgumentError(
+				"parse action failure!".to_owned(),
+			))
+		}
+	};
 
-    Ok(command::AssetArgs {
-	asset: asset,
-	action: action,
-	amount: amount,
-	message: None,             // default
-	minimum_confirmations: 10, // default
-	selection_strategy: "all".to_owned(),
-	estimate_selection_strategies: false, // default
-	method: "self".to_owned(),            // default
-	dest: "default".to_owned(),           // default
-	change_outputs: 1,                    // default
-	fluff: false,                         // default
-	max_outputs: 500,                     // default
-	target_slate_version: None,           // default
-    })
+	Ok(command::AssetArgs {
+		asset: Default::default(), // use main coin to pay.
+		action: action,
+		amount: 0,
+		message: None,             // default
+		minimum_confirmations: 10, // default
+		selection_strategy: "all".to_owned(),
+		estimate_selection_strategies: false, // default
+		method: "self".to_owned(),            // default
+		dest: "default".to_owned(),           // default
+		change_outputs: 1,                    // default
+		fluff: false,                         // default
+		max_outputs: 500,                     // default
+		target_slate_version: None,           // default
+	})
 }
 
 pub fn parse_receive_args(receive_args: &ArgMatches) -> Result<command::ReceiveArgs, ParseError> {
