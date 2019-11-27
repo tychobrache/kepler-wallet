@@ -639,7 +639,8 @@ impl Slate {
 		let final_excess = {
 			// sum the input/output commitments on the final tx
 			let overage = final_tx.fee() as i64;
-			let tx_excess = final_tx.sum_commitments(overage)?;
+			let mint_overage = Some(final_tx.body.mint_overage()?);
+			let tx_excess = final_tx.sum_commitments(overage, mint_overage)?;
 
 			// subtract the kernel_excess (built from kernel_offset)
 			let offset_excess = keychain
