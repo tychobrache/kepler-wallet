@@ -64,7 +64,7 @@ where
 	)?;
 	let keychain = wallet.keychain();
 
-	while (!asset_actions.is_empty()) {
+	while !asset_actions.is_empty() {
 		elems.push(build::mint(asset_actions.pop().unwrap()));
 	}
 
@@ -203,12 +203,17 @@ where
 	let height = slate.height;
 	let asset = slate.asset;
 
+	let mut out_vec = vec![];
+	let mut out_info = vec![];
+	out_vec.push(build::output(asset, amount, key_id.clone()));
+	out_info.push((asset, amount));
+	for mint in slate.tx.assets() {
+		out_vec.push(build::output(mint.asset(), mint.amount(), key_id.clone()));
+		out_info.push((mint.asset(), mint.amount()));
+	}
 	let slate_id = slate.id.clone();
-	let blinding = slate.add_transaction_elements(
-		&keychain,
-		&ProofBuilder::new(&keychain),
-		vec![build::output(asset, amount, key_id.clone())],
-	)?;
+	let blinding =
+		slate.add_transaction_elements(&keychain, &ProofBuilder::new(&keychain), out_vec)?;
 
 	// Add blinding sum to our context
 	let mut context = Context::new(
@@ -222,31 +227,37 @@ where
 	);
 
 	context.add_output(&key_id, &None, amount);
+
 	let messages = Some(slate.participant_messages());
-	let commit = wallet.calc_commit_for_cache(amount, &key_id_inner, asset)?;
-	let mut batch = wallet.batch()?;
-	let log_id = batch.next_tx_log_id(&parent_key_id)?;
-	let mut t = TxLogEntry::new(parent_key_id.clone(), TxLogEntryType::TxReceived, log_id);
-	t.tx_slate_id = Some(slate_id);
-	t.amount_credited = amount;
-	t.num_outputs = 1;
-	t.messages = messages;
-	batch.save(OutputData {
-		root_key_id: parent_key_id.clone(),
-		key_id: key_id_inner.clone(),
-		mmr_index: None,
-		n_child: key_id_inner.to_path().last_path_index(),
-		commit: commit,
-		asset: asset,
-		value: amount,
-		status: OutputStatus::Unconfirmed,
-		height: height,
-		lock_height: 0,
-		is_coinbase: false,
-		tx_log_entry: Some(log_id),
-	})?;
-	batch.save_tx_log_entry(t, &parent_key_id)?;
-	batch.commit()?;
+
+	for out in out_info {
+		let (asset, amount) = (out.0, out.1);
+		let commit = wallet.calc_commit_for_cache(amount, &key_id_inner, asset)?;
+		let mut batch = wallet.batch()?;
+		let log_id = batch.next_tx_log_id(&parent_key_id)?;
+		let mut t = TxLogEntry::new(parent_key_id.clone(), TxLogEntryType::TxReceived, log_id);
+		t.tx_slate_id = Some(slate_id);
+		t.amount_credited = amount;
+		t.num_outputs = 1;
+		t.messages = messages.clone();
+		batch.save(OutputData {
+			root_key_id: parent_key_id.clone(),
+			key_id: key_id_inner.clone(),
+			mmr_index: None,
+			n_child: key_id_inner.to_path().last_path_index(),
+			commit: commit,
+			asset: asset,
+			value: amount,
+			status: OutputStatus::Unconfirmed,
+			height: height,
+			lock_height: 0,
+			is_coinbase: false,
+			tx_log_entry: Some(log_id),
+		})?;
+		batch.save_tx_log_entry(t, &parent_key_id)?;
+
+		batch.commit()?;
+	}
 
 	Ok((key_id, context))
 }
