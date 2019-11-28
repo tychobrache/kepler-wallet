@@ -52,7 +52,7 @@ where
 {
 	let mut mint_input = 0;
 	let mut mint_output = 0;
-	for i in asset_actions {
+	for i in &asset_actions {
 		match i {
 			AssetAction::New { .. } | AssetAction::Issue { .. } => {
 				mint_output += 1;
@@ -60,6 +60,7 @@ where
 			AssetAction::Withdraw { .. } => {
 				mint_input += 1;
 			}
+			_ => {}
 		}
 	}
 

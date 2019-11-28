@@ -110,6 +110,8 @@ where
 		num_change_outputs,
 		selection_strategy_is_use_all,
 		parent_key_id,
+		0,
+		0,
 	)?;
 	Ok((total, fee))
 }
