@@ -50,6 +50,19 @@ where
 	C: NodeClient,
 	K: Keychain,
 {
+	let mut mint_input = 0;
+	let mut mint_output = 0;
+	for i in asset_actions {
+		match i {
+			AssetAction::New { .. } | AssetAction::Issue { .. } => {
+				mint_output += 1;
+			}
+			AssetAction::Withdraw { .. } => {
+				mint_input += 1;
+			}
+		}
+	}
+
 	let (mut elems, inputs, change_amounts_derivations, fee) = select_send_tx(
 		wallet,
 		slate.amount,
@@ -61,6 +74,8 @@ where
 		change_outputs,
 		selection_strategy_is_use_all,
 		&parent_key_id,
+		mint_input,
+		mint_output,
 	)?;
 	let keychain = wallet.keychain();
 
@@ -276,6 +291,8 @@ pub fn select_send_tx<T: ?Sized, C, K, B>(
 	change_outputs: usize,
 	selection_strategy_is_use_all: bool,
 	parent_key_id: &Identifier,
+	mint_input: usize,
+	mint_output: usize,
 ) -> Result<
 	(
 		Vec<Box<build::Append<K, B>>>,
@@ -291,7 +308,6 @@ where
 	K: Keychain,
 	B: ProofBuild,
 {
-	// TODO mint add fee.
 	let (coins, _total, amount, fee) = select_coins_and_fee(
 		wallet,
 		amount,
@@ -301,6 +317,8 @@ where
 		change_outputs,
 		selection_strategy_is_use_all,
 		&parent_key_id,
+		mint_input,
+		mint_output,
 	)?;
 
 	// build transaction skeleton with inputs and change
@@ -324,6 +342,8 @@ pub fn select_coins_and_fee<T: ?Sized, C, K>(
 	change_outputs: usize,
 	selection_strategy_is_use_all: bool,
 	parent_key_id: &Identifier,
+	mint_input: usize,
+	mint_output: usize,
 ) -> Result<
 	(
 		Vec<OutputData>,
@@ -357,7 +377,7 @@ where
 	// TODO - Does this not potentially reveal the senders private key?
 	//
 	// First attempt to spend without change
-	let mut fee = tx_fee(coins.len(), 1, 1, None);
+	let mut fee = tx_fee(coins.len() + mint_input, 1 + mint_output, 1, None);
 	let mut total: u64 = coins.iter().map(|c| c.value).sum();
 	let mut amount_with_fee = amount + fee;
 
@@ -380,7 +400,7 @@ where
 		})?;
 	}
 
-	let num_outputs = change_outputs + 1;
+	let num_outputs = change_outputs + 1 + mint_output;
 
 	// We need to add a change address or amount with fee is more than total
 	if total != amount_with_fee {

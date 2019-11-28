@@ -494,7 +494,7 @@ impl Slate {
 		// we could just overwrite the fee here (but we won't) due to the sig
 		let fee = tx_fee(
 			self.tx.inputs().len(),
-			self.tx.outputs().len(),
+			self.tx.outputs().len() - 1,
 			self.tx.kernels().len(),
 			None,
 		);
