@@ -77,6 +77,11 @@ subcommands:
         - amount:
             help: Number of coins to send with optional fraction, e.g. 12.423
             index: 1
+        - asset:
+            short: a
+            long: asset    
+            help: Asset coins send
+            takes_value: true
         - minimum_confirmations:
             help: Minimum number of confirmations required for an output to be spendable
             short: c

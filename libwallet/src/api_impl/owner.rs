@@ -167,7 +167,7 @@ where
 		None => None,
 	};
 
-	let mut slate = tx::new_tx_slate(&mut *w, args.amount, 2, use_test_rng)?;
+	let mut slate = tx::new_tx_slate(&mut *w, args.amount, 2, use_test_rng, args.asset)?;
 
 	// if we just want to estimate, don't save a context, just send the results
 	// back
@@ -204,11 +204,13 @@ where
 
 	// Save the aggsig context in our DB for when we
 	// recieve the transaction back
+
 	{
 		let mut batch = w.batch()?;
 		batch.save_private_context(slate.id.as_bytes(), 0, &context)?;
 		batch.commit()?;
 	}
+
 	if let Some(v) = args.target_slate_version {
 		slate.version_info.orig_version = v;
 	}
@@ -245,7 +247,7 @@ where
 		None => None,
 	};
 
-	let mut slate = tx::new_tx_slate(&mut *w, args.amount, 2, use_test_rng)?;
+	let mut slate = tx::new_tx_slate(&mut *w, args.amount, 2, use_test_rng, Asset::default())?;
 	let context = tx::add_output_to_slate(
 		&mut *w,
 		&mut slate,

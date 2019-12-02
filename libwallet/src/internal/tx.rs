@@ -39,6 +39,7 @@ pub fn new_tx_slate<T: ?Sized, C, K>(
 	amount: u64,
 	num_participants: usize,
 	use_test_rng: bool,
+	asset: Asset,
 ) -> Result<Slate, Error>
 where
 	T: WalletBackend<C, K>,
@@ -57,6 +58,7 @@ where
 	}
 	slate.amount = amount;
 	slate.height = current_height;
+	slate.asset = asset;
 
 	if valid_header_version(current_height, HeaderVersion(1)) {
 		slate.version_info.block_header_version = 1;

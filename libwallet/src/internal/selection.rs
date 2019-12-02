@@ -78,6 +78,7 @@ where
 		mint_input,
 		mint_output,
 	)?;
+
 	let keychain = wallet.keychain();
 
 	while !asset_actions.is_empty() {
@@ -360,7 +361,7 @@ pub fn select_coins_and_fee<T: ?Sized, C, K>(
 	amount: u64,
 	current_height: u64,
 	minimum_confirmations: u64,
-	max_outputs: usize,
+	pre_max_outputs: usize,
 	change_outputs: usize,
 	selection_strategy_is_use_all: bool,
 	parent_key_id: &Identifier,
@@ -389,7 +390,7 @@ where
 		amount,
 		current_height,
 		minimum_confirmations,
-		max_outputs,
+		pre_max_outputs,
 		selection_strategy_is_use_all,
 		parent_key_id,
 	);
@@ -465,19 +466,20 @@ where
 		}
 		Ok((coins, total, vec![], 0, amount, fee))
 	} else {
+		let mut fee = tx_fee(coins.len() + mint_input, 1 + mint_output, 1, None);
 		// select some spendable coins from the wallet
 		let (main_max_outputs, mut main_coins) = select_coins(
 			wallet,
 			Asset::default(),
-			amount,
+			fee,
 			current_height,
 			minimum_confirmations,
-			max_outputs,
+			pre_max_outputs,
 			selection_strategy_is_use_all,
 			parent_key_id,
 		);
 
-		let mut fee = tx_fee(
+		fee = tx_fee(
 			main_coins.len() + coins.len() + mint_input,
 			1 + mint_output,
 			1,

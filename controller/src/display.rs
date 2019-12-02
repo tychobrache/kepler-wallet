@@ -47,6 +47,7 @@ pub fn outputs(
 	let mut table = table!();
 
 	table.set_titles(row![
+		bMG->"Asset",
 		bMG->"Output Commitment",
 		bMG->"MMR Index",
 		bMG->"Block Height",
@@ -59,6 +60,12 @@ pub fn outputs(
 	]);
 
 	for m in outputs {
+		let asset_str = &format!("{:?}", m.output.asset)[10..];
+		let asset = if asset_str == "0929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac031d3c6863973926e049e637cb1b5f40a36dac28af1766968c30c2313f3a38904" {
+                    "Main".to_owned()
+                } else {
+                    format!("{}...", &asset_str[0..10])
+                };
 		let commit = format!("{}", util::to_hex(m.commit.as_ref().to_vec()));
 		let index = match m.output.mmr_index {
 			None => "None".to_owned(),
@@ -83,6 +90,7 @@ pub fn outputs(
 
 		if dark_background_color_scheme {
 			table.add_row(row![
+				bFG->asset,
 				bFC->commit,
 				bFB->index,
 				bFB->height,
@@ -95,6 +103,7 @@ pub fn outputs(
 			]);
 		} else {
 			table.add_row(row![
+				bFG->asset,
 				bFD->commit,
 				bFB->index,
 				bFB->height,
