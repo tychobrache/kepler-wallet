@@ -309,8 +309,9 @@ where
 	K: Keychain,
 	B: ProofBuild,
 {
-	let (coins, _total, amount, fee) = select_coins_and_fee(
+	let (coins, _total, main_coins, _main_total, amount, fee) = select_coins_and_fee(
 		wallet,
+		asset,
 		amount,
 		current_height,
 		minimum_confirmations,
@@ -322,9 +323,28 @@ where
 		mint_output,
 	)?;
 
-	// build transaction skeleton with inputs and change
-	let (mut parts, change_amounts_derivations) =
-		inputs_and_change(&coins, wallet, amount, fee, change_outputs, asset)?;
+	let (mut parts, change_amounts_derivations) = if main_coins.len() > 0 {
+		// build transaction skeleton with inputs and change
+		let (mut parts, mut change_amounts_derivations) =
+			inputs_and_change(&coins, wallet, amount, 0, change_outputs, asset)?;
+
+		// build transaction skeleton with inputs and change
+		let (mut main_parts, mut main_change_amounts_derivations) = inputs_and_change(
+			&main_coins,
+			wallet,
+			0,
+			fee,
+			change_outputs,
+			Asset::default(),
+		)?;
+
+		parts.append(&mut main_parts);
+		change_amounts_derivations.append(&mut main_change_amounts_derivations);
+		(parts, change_amounts_derivations)
+	} else {
+		// build transaction skeleton with inputs and change
+		inputs_and_change(&coins, wallet, amount, fee, change_outputs, asset)?
+	};
 
 	// This is more proof of concept than anything but here we set lock_height
 	// on tx being sent (based on current chain height via api).
@@ -336,6 +356,7 @@ where
 /// Select outputs and calculating fee.
 pub fn select_coins_and_fee<T: ?Sized, C, K>(
 	wallet: &mut T,
+	asset: Asset,
 	amount: u64,
 	current_height: u64,
 	minimum_confirmations: u64,
@@ -348,9 +369,11 @@ pub fn select_coins_and_fee<T: ?Sized, C, K>(
 ) -> Result<
 	(
 		Vec<OutputData>,
-		u64, // total
-		u64, // amount
-		u64, // fee
+		u64,             // total
+		Vec<OutputData>, //main_coins for asset
+		u64,             // main_total for asset
+		u64,             // amount
+		u64,             // fee
 	),
 	Error,
 >
@@ -362,6 +385,7 @@ where
 	// select some spendable coins from the wallet
 	let (max_outputs, mut coins) = select_coins(
 		wallet,
+		asset,
 		amount,
 		current_height,
 		minimum_confirmations,
@@ -370,74 +394,178 @@ where
 		parent_key_id,
 	);
 
-	// sender is responsible for setting the fee on the partial tx
-	// recipient should double check the fee calculation and not blindly trust the
-	// sender
+	if asset == Asset::default() {
+		// sender is responsible for setting the fee on the partial tx
+		// recipient should double check the fee calculation and not blindly trust the
+		// sender
 
-	// TODO - Is it safe to spend without a change output? (1 input -> 1 output)
-	// TODO - Does this not potentially reveal the senders private key?
-	//
-	// First attempt to spend without change
-	let mut fee = tx_fee(coins.len() + mint_input, 1 + mint_output, 1, None);
-	let mut total: u64 = coins.iter().map(|c| c.value).sum();
-	let mut amount_with_fee = amount + fee;
+		// TODO - Is it safe to spend without a change output? (1 input -> 1 output)
+		// TODO - Does this not potentially reveal the senders private key?
+		//
+		// First attempt to spend without change
+		let mut fee = tx_fee(coins.len() + mint_input, 1 + mint_output, 1, None);
+		let mut total: u64 = coins.iter().map(|c| c.value).sum();
+		let mut amount_with_fee = amount + fee;
 
-	if total == 0 {
-		return Err(ErrorKind::NotEnoughFunds {
-			available: 0,
-			available_disp: amount_to_hr_string(0, false),
-			needed: amount_with_fee as u64,
-			needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
-		})?;
-	}
-
-	// The amount with fee is more than the total values of our max outputs
-	if total < amount_with_fee && coins.len() == max_outputs {
-		return Err(ErrorKind::NotEnoughFunds {
-			available: total,
-			available_disp: amount_to_hr_string(total, false),
-			needed: amount_with_fee as u64,
-			needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
-		})?;
-	}
-
-	let num_outputs = change_outputs + 1 + mint_output;
-
-	// We need to add a change address or amount with fee is more than total
-	if total != amount_with_fee {
-		fee = tx_fee(coins.len(), num_outputs, 1, None);
-		amount_with_fee = amount + fee;
-
-		// Here check if we have enough outputs for the amount including fee otherwise
-		// look for other outputs and check again
-		while total < amount_with_fee {
-			// End the loop if we have selected all the outputs and still not enough funds
-			if coins.len() == max_outputs {
-				return Err(ErrorKind::NotEnoughFunds {
-					available: total as u64,
-					available_disp: amount_to_hr_string(total, false),
-					needed: amount_with_fee as u64,
-					needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
-				})?;
-			}
-
-			// select some spendable coins from the wallet
-			coins = select_coins(
-				wallet,
-				amount_with_fee,
-				current_height,
-				minimum_confirmations,
-				max_outputs,
-				selection_strategy_is_use_all,
-				parent_key_id,
-			)
-			.1;
-			fee = tx_fee(coins.len(), num_outputs, 1, None);
-			total = coins.iter().map(|c| c.value).sum();
-			amount_with_fee = amount + fee;
+		if total == 0 {
+			return Err(ErrorKind::NotEnoughFunds {
+				available: 0,
+				available_disp: amount_to_hr_string(0, false),
+				needed: amount_with_fee as u64,
+				needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
+			})?;
 		}
+
+		// The amount with fee is more than the total values of our max outputs
+		if total < amount_with_fee && coins.len() == max_outputs {
+			return Err(ErrorKind::NotEnoughFunds {
+				available: total,
+				available_disp: amount_to_hr_string(total, false),
+				needed: amount_with_fee as u64,
+				needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
+			})?;
+		}
+
+		let num_outputs = change_outputs + 1 + mint_output;
+
+		// We need to add a change address or amount with fee is more than total
+		if total != amount_with_fee {
+			fee = tx_fee(coins.len(), num_outputs, 1, None);
+			amount_with_fee = amount + fee;
+
+			// Here check if we have enough outputs for the amount including fee otherwise
+			// look for other outputs and check again
+			while total < amount_with_fee {
+				// End the loop if we have selected all the outputs and still not enough funds
+				if coins.len() == max_outputs {
+					return Err(ErrorKind::NotEnoughFunds {
+						available: total as u64,
+						available_disp: amount_to_hr_string(total, false),
+						needed: amount_with_fee as u64,
+						needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
+					})?;
+				}
+
+				// select some spendable coins from the wallet
+				coins = select_coins(
+					wallet,
+					Asset::default(),
+					amount_with_fee,
+					current_height,
+					minimum_confirmations,
+					max_outputs,
+					selection_strategy_is_use_all,
+					parent_key_id,
+				)
+				.1;
+				fee = tx_fee(coins.len(), num_outputs, 1, None);
+				total = coins.iter().map(|c| c.value).sum();
+				amount_with_fee = amount + fee;
+			}
+		}
+		Ok((coins, total, vec![], 0, amount, fee))
+	} else {
+		// select some spendable coins from the wallet
+		let (main_max_outputs, mut main_coins) = select_coins(
+			wallet,
+			Asset::default(),
+			amount,
+			current_height,
+			minimum_confirmations,
+			max_outputs,
+			selection_strategy_is_use_all,
+			parent_key_id,
+		);
+
+		let mut fee = tx_fee(
+			main_coins.len() + coins.len() + mint_input,
+			1 + mint_output,
+			1,
+			None,
+		);
+		let mut total: u64 = coins.iter().map(|c| c.value).sum();
+		let mut main_total: u64 = coins.iter().map(|c| c.value).sum();
+		let mut amount_with_fee = 0 + fee;
+
+		if total < amount || main_total < amount_with_fee {
+			return Err(ErrorKind::NotEnoughFunds {
+				available: 0,
+				available_disp: amount_to_hr_string(0, false),
+				needed: amount_with_fee as u64,
+				needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
+			})?;
+		}
+
+		let num_outputs = change_outputs + 1 + mint_output;
+
+		// We need to add a change address or amount with fee is more than total
+		if total != amount {
+			// Here check if we have enough outputs for the amount including fee otherwise
+			// look for other outputs and check again
+			while total < amount {
+				// End the loop if we have selected all the outputs and still not enough funds
+				if coins.len() == max_outputs {
+					return Err(ErrorKind::NotEnoughFunds {
+						available: total as u64,
+						available_disp: amount_to_hr_string(total, false),
+						needed: amount as u64,
+						needed_disp: amount_to_hr_string(amount as u64, false),
+					})?;
+				}
+
+				// select some spendable coins from the wallet
+				coins = select_coins(
+					wallet,
+					asset,
+					amount,
+					current_height,
+					minimum_confirmations,
+					max_outputs,
+					selection_strategy_is_use_all,
+					parent_key_id,
+				)
+				.1;
+			}
+		}
+
+		// We need to add a change address or amount with fee is more than total
+		if main_total != amount_with_fee {
+			fee = tx_fee(coins.len() + main_coins.len(), num_outputs, 1, None);
+			amount_with_fee = 0 + fee;
+
+			// Here check if we have enough outputs for the amount including fee otherwise
+			// look for other outputs and check again
+			while main_total < amount_with_fee {
+				// End the loop if we have selected all the outputs and still not enough funds
+				if main_coins.len() == main_max_outputs {
+					return Err(ErrorKind::NotEnoughFunds {
+						available: main_total as u64,
+						available_disp: amount_to_hr_string(main_total, false),
+						needed: amount_with_fee as u64,
+						needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
+					})?;
+				}
+
+				// select some spendable coins from the wallet
+				main_coins = select_coins(
+					wallet,
+					Asset::default(),
+					amount_with_fee,
+					current_height,
+					minimum_confirmations,
+					max_outputs,
+					selection_strategy_is_use_all,
+					parent_key_id,
+				)
+				.1;
+			}
+		}
+
+		fee = tx_fee(coins.len() + main_coins.len(), num_outputs, 1, None);
+		total = coins.iter().map(|c| c.value).sum();
+		main_total = main_coins.iter().map(|c| c.value).sum();
+		Ok((coins, total, main_coins, main_total, amount, fee))
 	}
-	Ok((coins, total, amount, fee))
 }
 
 /// Selects inputs and change for a transaction
@@ -522,6 +650,7 @@ where
 
 pub fn select_coins<T: ?Sized, C, K>(
 	wallet: &mut T,
+	asset: Asset,
 	amount: u64,
 	current_height: u64,
 	minimum_confirmations: u64,
@@ -540,6 +669,7 @@ where
 		.iter()
 		.filter(|out| {
 			out.root_key_id == *parent_key_id
+				&& out.asset == asset
 				&& out.eligible_to_spend(current_height, minimum_confirmations)
 		})
 		.collect::<Vec<OutputData>>();

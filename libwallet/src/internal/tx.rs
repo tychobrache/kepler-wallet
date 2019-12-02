@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 use crate::internal::{selection, updater};
 use crate::kepler_core::consensus::valid_header_version;
+use crate::kepler_core::core::asset::Asset;
 use crate::kepler_core::core::issued_asset::AssetAction;
 use crate::kepler_core::core::HeaderVersion;
 use crate::kepler_keychain::{Identifier, Keychain};
@@ -77,6 +78,7 @@ pub fn estimate_send_tx<T: ?Sized, C, K>(
 	num_change_outputs: usize,
 	selection_strategy_is_use_all: bool,
 	parent_key_id: &Identifier,
+	asset: Asset,
 ) -> Result<
 	(
 		u64, // total
@@ -101,8 +103,9 @@ where
 	// according to plan
 	// This function is just a big helper to do all of that, in theory
 	// this process can be split up in any way
-	let (_coins, total, _amount, fee) = selection::select_coins_and_fee(
+	let (_coins, total, _main_coins, _main_total, _amount, fee) = selection::select_coins_and_fee(
 		wallet,
+		asset,
 		amount,
 		current_height,
 		minimum_confirmations,

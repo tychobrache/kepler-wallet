@@ -180,6 +180,7 @@ where
 			args.num_change_outputs as usize,
 			args.selection_strategy_is_use_all,
 			&parent_key_id,
+			args.asset,
 		)?;
 		slate.amount = total;
 		slate.fee = fee;
