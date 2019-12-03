@@ -158,13 +158,13 @@ pub fn map_wallet_outputs<T: ?Sized, C, K>(
 	wallet: &mut T,
 	parent_key_id: &Identifier,
 	update_all: bool,
-) -> Result<HashMap<pedersen::Commitment, (Identifier, Option<u64>)>, Error>
+) -> Result<HashMap<pedersen::Commitment, (Asset, Identifier, Option<u64>)>, Error>
 where
 	T: WalletBackend<C, K>,
 	C: NodeClient,
 	K: Keychain,
 {
-	let mut wallet_outputs: HashMap<pedersen::Commitment, (Identifier, Option<u64>)> =
+	let mut wallet_outputs: HashMap<pedersen::Commitment, (Asset, Identifier, Option<u64>)> =
 		HashMap::new();
 	let keychain = wallet.keychain().clone();
 	let unspents: Vec<OutputData> = wallet
@@ -204,7 +204,7 @@ where
 				)
 				.unwrap(), // TODO: proper support for different switch commitment schemes
 		};
-		wallet_outputs.insert(commit, (out.key_id.clone(), out.mmr_index));
+		wallet_outputs.insert(commit, (out.asset, out.key_id.clone(), out.mmr_index));
 	}
 	Ok(wallet_outputs)
 }
@@ -248,7 +248,7 @@ where
 /// Apply refreshed API output data to the wallet
 pub fn apply_api_outputs<T: ?Sized, C, K>(
 	wallet: &mut T,
-	wallet_outputs: &HashMap<pedersen::Commitment, (Identifier, Option<u64>)>,
+	wallet_outputs: &HashMap<pedersen::Commitment, (Asset, Identifier, Option<u64>)>,
 	api_outputs: &HashMap<pedersen::Commitment, (String, u64, u64)>,
 	height: u64,
 	parent_key_id: &Identifier,
@@ -274,7 +274,7 @@ where
 			return Ok(());
 		}
 		let mut batch = wallet.batch()?;
-		for (commit, (id, mmr_index)) in wallet_outputs.iter() {
+		for (commit, (_asset, id, mmr_index)) in wallet_outputs.iter() {
 			if let Ok(mut output) = batch.get(id, mmr_index) {
 				match api_outputs.get(&commit) {
 					Some(o) => {
@@ -343,13 +343,22 @@ where
 	// and a list of outputs we want to query the node for
 	let wallet_outputs = map_wallet_outputs(wallet, parent_key_id, update_all)?;
 
-	let wallet_output_keys = wallet_outputs.keys().map(|commit| commit.clone()).collect();
+	let mut wallet_output_string: Vec<String> = vec![];
+	for (commit, value) in wallet_outputs.iter() {
+		wallet_output_string.push(format!(
+			"{}{}",
+			util::to_hex(commit.as_ref().to_vec()),
+			value.0.to_hex()
+		));
+	}
 
 	let api_outputs = wallet
 		.w2n_client()
-		.get_outputs_from_node(wallet_output_keys)?;
+		.get_outputs_from_node(wallet_output_string)?;
+
 	apply_api_outputs(wallet, &wallet_outputs, &api_outputs, height, parent_key_id)?;
 	clean_old_unconfirmed(wallet, height)?;
+
 	Ok(())
 }
 

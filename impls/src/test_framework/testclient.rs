@@ -211,7 +211,6 @@ where
 		let mut slate = serde_json::from_str(&m.body).context(
 			libwallet::ErrorKind::ClientCallback("Error parsing TxWrapper".to_owned()),
 		)?;
-;
 		{
 			let mut w = wallet.1.lock();
 			w.open_with_credentials()?;
@@ -454,11 +453,11 @@ impl NodeClient for LocalWalletClient {
 	/// Retrieve outputs from node
 	fn get_outputs_from_node(
 		&self,
-		wallet_outputs: Vec<pedersen::Commitment>,
+		wallet_outputs: Vec<String>,
 	) -> Result<HashMap<pedersen::Commitment, (String, u64, u64)>, libwallet::Error> {
 		let query_params: Vec<String> = wallet_outputs
 			.iter()
-			.map(|commit| format!("{}", util::to_hex(commit.as_ref().to_vec())))
+			.map(|commit| format!("{}", commit))
 			.collect();
 		let query_str = query_params.join(",");
 		let m = WalletProxyMessage {
