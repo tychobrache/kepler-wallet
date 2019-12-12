@@ -425,10 +425,10 @@ pub struct Context {
 	pub sec_nonce: SecretKey,
 	/// store my outputs + amounts between invocations
 	/// Id, mmr_index (if known), amount
-	pub output_ids: Vec<(Identifier, Option<u64>, u64)>,
+	pub output_ids: Vec<(Identifier, Option<u64>, u64, Asset)>,
 	/// store my inputs
 	/// Id, mmr_index (if known), amount
-	pub input_ids: Vec<(Identifier, Option<u64>, u64)>,
+	pub input_ids: Vec<(Identifier, Option<u64>, u64, Asset)>,
 	/// store the calculated fee
 	pub fee: u64,
 	/// keep track of the participant id
@@ -463,25 +463,37 @@ impl Context {
 impl Context {
 	/// Tracks an output contributing to my excess value (if it needs to
 	/// be kept between invocations
-	pub fn add_output(&mut self, output_id: &Identifier, mmr_index: &Option<u64>, amount: u64) {
+	pub fn add_output(
+		&mut self,
+		output_id: &Identifier,
+		mmr_index: &Option<u64>,
+		amount: u64,
+		asset: Asset,
+	) {
 		self.output_ids
-			.push((output_id.clone(), mmr_index.clone(), amount));
+			.push((output_id.clone(), mmr_index.clone(), amount, asset));
 	}
 
 	/// Returns all stored outputs
-	pub fn get_outputs(&self) -> Vec<(Identifier, Option<u64>, u64)> {
+	pub fn get_outputs(&self) -> Vec<(Identifier, Option<u64>, u64, Asset)> {
 		self.output_ids.clone()
 	}
 
 	/// Tracks IDs of my inputs into the transaction
 	/// be kept between invocations
-	pub fn add_input(&mut self, input_id: &Identifier, mmr_index: &Option<u64>, amount: u64) {
+	pub fn add_input(
+		&mut self,
+		input_id: &Identifier,
+		mmr_index: &Option<u64>,
+		amount: u64,
+		asset: Asset,
+	) {
 		self.input_ids
-			.push((input_id.clone(), mmr_index.clone(), amount));
+			.push((input_id.clone(), mmr_index.clone(), amount, asset));
 	}
 
 	/// Returns all stored input identifiers
-	pub fn get_inputs(&self) -> Vec<(Identifier, Option<u64>, u64)> {
+	pub fn get_inputs(&self) -> Vec<(Identifier, Option<u64>, u64, Asset)> {
 		self.input_ids.clone()
 	}
 

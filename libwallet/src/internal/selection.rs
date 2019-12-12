@@ -102,17 +102,17 @@ where
 
 	// Store our private identifiers for each input
 	for input in inputs {
-		context.add_input(&input.key_id, &input.mmr_index, input.value);
+		context.add_input(&input.key_id, &input.mmr_index, input.value, input.asset);
 	}
 
 	let mut commits: HashMap<Identifier, Option<String>> = HashMap::new();
 
 	// Store change output(s) and cached commits
-	for (change_amount, id, mmr_index) in &change_amounts_derivations {
-		context.add_output(&id, &mmr_index, *change_amount);
+	for (change_amount, id, mmr_index, asset) in &change_amounts_derivations {
+		context.add_output(&id, &mmr_index, *change_amount, asset.clone());
 		commits.insert(
 			id.clone(),
-			wallet.calc_commit_for_cache(*change_amount, &id, slate.asset)?,
+			wallet.calc_commit_for_cache(*change_amount, &id, asset.clone())?,
 		);
 	}
 
@@ -133,11 +133,11 @@ where
 {
 	let mut output_commits: HashMap<Identifier, (Option<String>, u64)> = HashMap::new();
 	// Store cached commits before locking wallet
-	for (id, _, change_amount) in &context.get_outputs() {
+	for (id, _, change_amount, asset) in &context.get_outputs() {
 		output_commits.insert(
 			id.clone(),
 			(
-				wallet.calc_commit_for_cache(*change_amount, &id, slate.asset)?,
+				wallet.calc_commit_for_cache(*change_amount, &id, asset.clone())?,
 				*change_amount,
 			),
 		);
@@ -169,7 +169,7 @@ where
 		t.messages = messages;
 
 		// write the output representing our change
-		for (id, _, _) in &context.get_outputs() {
+		for (id, _, _, asset) in &context.get_outputs() {
 			t.num_outputs += 1;
 			let (commit, change_amount) = output_commits.get(&id).unwrap().clone();
 			t.amount_credited += change_amount;
@@ -178,7 +178,7 @@ where
 				key_id: id.clone(),
 				n_child: id.to_path().last_path_index(),
 				commit: commit,
-				asset: slate.asset,
+				asset: asset.clone(),
 				mmr_index: None,
 				value: change_amount.clone(),
 				status: OutputStatus::Unconfirmed,
@@ -243,7 +243,7 @@ where
 		1,
 	);
 
-	context.add_output(&key_id, &None, amount);
+	context.add_output(&key_id, &None, amount, asset);
 
 	let messages = Some(slate.participant_messages());
 
@@ -299,8 +299,8 @@ pub fn select_send_tx<T: ?Sized, C, K, B>(
 	(
 		Vec<Box<build::Append<K, B>>>,
 		Vec<OutputData>,
-		Vec<(u64, Identifier, Option<u64>)>, // change amounts and derivations
-		u64,                                 // fee
+		Vec<(u64, Identifier, Option<u64>, Asset)>, // change amounts and derivations
+		u64,                                        // fee
 	),
 	Error,
 >
@@ -581,7 +581,7 @@ pub fn inputs_and_change<T: ?Sized, C, K, B>(
 ) -> Result<
 	(
 		Vec<Box<build::Append<K, B>>>,
-		Vec<(u64, Identifier, Option<u64>)>,
+		Vec<(u64, Identifier, Option<u64>, Asset)>,
 	),
 	Error,
 >
@@ -596,7 +596,10 @@ where
 	// calculate the total across all inputs, and how much is left
 	let total: u64 = coins.iter().map(|c| c.value).sum();
 
-	parts.push(build::with_fee(fee));
+	// Fee is only payable with native asset
+	if asset == Asset::default() {
+		parts.push(build::with_fee(fee));
+	}
 
 	// if we are spending 10,000 coins to send 1,000 then our change will be 9,000
 	// if the fee is 80 then the recipient will receive 1000 and our change will be
@@ -635,7 +638,7 @@ where
 
 			let change_key = wallet.next_child().unwrap();
 
-			change_amounts_derivations.push((change_amount, change_key.clone(), None));
+			change_amounts_derivations.push((change_amount, change_key.clone(), None, asset));
 			parts.push(build::output(asset, change_amount, change_key));
 		}
 	}
