@@ -335,7 +335,7 @@ where
 			wallet,
 			0,
 			fee,
-			change_outputs,
+			1,
 			Asset::default(),
 		)?;
 
@@ -498,6 +498,7 @@ where
 			})?;
 		}
 
+		// n change outputs (in asset), and 1 change output for the main coin
 		let num_outputs = change_outputs + 1 + mint_output;
 
 		// We need to add a change address or amount with fee is more than total
