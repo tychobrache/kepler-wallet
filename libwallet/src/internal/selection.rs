@@ -330,14 +330,8 @@ where
 			inputs_and_change(&coins, wallet, amount, 0, change_outputs, asset)?;
 
 		// build transaction skeleton with inputs and change
-		let (mut main_parts, mut main_change_amounts_derivations) = inputs_and_change(
-			&main_coins,
-			wallet,
-			0,
-			fee,
-			1,
-			Asset::default(),
-		)?;
+		let (mut main_parts, mut main_change_amounts_derivations) =
+			inputs_and_change(&main_coins, wallet, 0, fee, 1, Asset::default())?;
 
 		parts.append(&mut main_parts);
 		change_amounts_derivations.append(&mut main_change_amounts_derivations);
@@ -427,10 +421,10 @@ where
 			})?;
 		}
 
-		let num_outputs = change_outputs + 1 + mint_output;
-
 		// We need to add a change address or amount with fee is more than total
 		if total != amount_with_fee {
+			let num_outputs = change_outputs + 1 + mint_output;
+
 			fee = tx_fee(coins.len(), num_outputs, 1, None);
 			amount_with_fee = amount + fee;
 
@@ -466,8 +460,32 @@ where
 		}
 		Ok((coins, total, vec![], 0, amount, fee))
 	} else {
-		let mut fee = tx_fee(coins.len() + mint_input, 1 + mint_output, 1, None);
-		// select some spendable coins from the wallet
+		// check if there is enough target asset to send
+		let total: u64 = coins.iter().map(|c| c.value).sum();
+		if total < amount {
+			return Err(ErrorKind::NotEnoughFunds {
+				available: total,
+				available_disp: amount_to_hr_string(total, false),
+				needed: amount as u64,
+				needed_disp: amount_to_hr_string(amount as u64, false),
+			})?;
+		}
+
+		// number of asset inputs / outputs
+		let num_inputs = coins.len() + mint_input;
+		let mut num_outputs = 1 + mint_output;
+
+		if total > amount {
+			// need to add change asset outputs
+			num_outputs += change_outputs
+		}
+
+		// fee for target asset
+		let mut fee = tx_fee(num_inputs, num_outputs, 1, None);
+
+		// FIXME: refactor the main coin selection to recursively call select_coins_and_fee...
+
+		// select main coins to pay for fee
 		let (main_max_outputs, mut main_coins) = select_coins(
 			wallet,
 			Asset::default(),
@@ -479,94 +497,75 @@ where
 			parent_key_id,
 		);
 
-		fee = tx_fee(
-			main_coins.len() + coins.len() + mint_input,
-			1 + mint_output,
-			1,
-			None,
-		);
-		let mut total: u64 = coins.iter().map(|c| c.value).sum();
-		let mut main_total: u64 = coins.iter().map(|c| c.value).sum();
-		let mut amount_with_fee = 0 + fee;
 
-		if total < amount || main_total < amount_with_fee {
+		let mut main_total: u64 = main_coins.iter().map(|c| c.value).sum();
+		if main_total < fee {
 			return Err(ErrorKind::NotEnoughFunds {
-				available: 0,
-				available_disp: amount_to_hr_string(0, false),
-				needed: amount_with_fee as u64,
-				needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
+				available: main_total,
+				available_disp: amount_to_hr_string(main_total, false),
+				needed: fee as u64,
+				needed_disp: amount_to_hr_string(fee as u64, false),
 			})?;
 		}
 
-		// n change outputs (in asset), and 1 change output for the main coin
-		let num_outputs = change_outputs + 1 + mint_output;
+		let mut num_all_outputs = num_outputs;
+		let mut num_all_inputs = main_coins.len() + coins.len() + mint_input;
 
-		// We need to add a change address or amount with fee is more than total
-		if total != amount {
-			// Here check if we have enough outputs for the amount including fee otherwise
-			// look for other outputs and check again
-			while total < amount {
-				// End the loop if we have selected all the outputs and still not enough funds
-				if coins.len() == max_outputs {
-					return Err(ErrorKind::NotEnoughFunds {
-						available: total as u64,
-						available_disp: amount_to_hr_string(total, false),
-						needed: amount as u64,
-						needed_disp: amount_to_hr_string(amount as u64, false),
-					})?;
-				}
+		// adjust fee to consider the main coin inputs consumed, and possibly change output
+		fee = tx_fee(
+			num_all_inputs,
+			num_all_outputs,
+			1,
+			None,
+		);
 
-				// select some spendable coins from the wallet
-				coins = select_coins(
-					wallet,
-					asset,
-					amount,
-					current_height,
-					minimum_confirmations,
-					max_outputs,
-					selection_strategy_is_use_all,
-					parent_key_id,
-				)
-				.1;
-			}
+		if main_total < fee {
+			return Err(ErrorKind::NotEnoughFunds {
+				available: main_total,
+				available_disp: amount_to_hr_string(main_total, false),
+				needed: fee as u64,
+				needed_disp: amount_to_hr_string(fee as u64, false),
+			})?;
 		}
 
-		// We need to add a change address or amount with fee is more than total
-		if main_total != amount_with_fee {
-			fee = tx_fee(coins.len() + main_coins.len(), num_outputs, 1, None);
-			amount_with_fee = 0 + fee;
+		if main_total > fee {
+			// need to add a change output for the main coin
+			num_all_outputs += 1;
 
-			// Here check if we have enough outputs for the amount including fee otherwise
-			// look for other outputs and check again
-			while main_total < amount_with_fee {
+			// adjust fee for the added change output for the main coin
+			fee = tx_fee(num_all_inputs, num_all_outputs, 1, None);
+
+			// Attempt to add main coin inputs to satisfy the increased fee from adding a main coin change
+			while main_total < fee {
 				// End the loop if we have selected all the outputs and still not enough funds
 				if main_coins.len() == main_max_outputs {
 					return Err(ErrorKind::NotEnoughFunds {
 						available: main_total as u64,
 						available_disp: amount_to_hr_string(main_total, false),
-						needed: amount_with_fee as u64,
-						needed_disp: amount_to_hr_string(amount_with_fee as u64, false),
+						needed: fee as u64,
+						needed_disp: amount_to_hr_string(fee as u64, false),
 					})?;
 				}
 
-				// select some spendable coins from the wallet
 				main_coins = select_coins(
 					wallet,
 					Asset::default(),
-					amount_with_fee,
+					fee,
 					current_height,
 					minimum_confirmations,
 					max_outputs,
 					selection_strategy_is_use_all,
 					parent_key_id,
 				)
-				.1;
+					.1;
+
+				// Note: in this loop, may select more main coin inputs to increase fee
+				main_total = main_coins.iter().map(|c| c.value).sum();
+				num_all_inputs = main_coins.len() + coins.len() + mint_input;
+				fee = tx_fee(num_all_inputs, num_all_outputs, 1, None);
 			}
 		}
 
-		fee = tx_fee(coins.len() + main_coins.len(), num_outputs, 1, None);
-		total = coins.iter().map(|c| c.value).sum();
-		main_total = main_coins.iter().map(|c| c.value).sum();
 		Ok((coins, total, main_coins, main_total, amount, fee))
 	}
 }
