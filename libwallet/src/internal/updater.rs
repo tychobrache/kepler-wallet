@@ -413,7 +413,6 @@ where
 	let mut locked_total = 0;
 
 	for out in outputs {
-		println!("out value: {}, status: {:?}", out.value, out.status);
 		match out.status {
 			OutputStatus::Unspent => {
 				if out.is_coinbase && out.lock_height > current_height {
