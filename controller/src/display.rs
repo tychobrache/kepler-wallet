@@ -60,8 +60,8 @@ pub fn outputs(
 	]);
 
 	for m in outputs {
-		let asset_str = &format!("{:?}", m.output.asset)[10..];
-		let asset = if asset_str == "0929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac031d3c6863973926e049e637cb1b5f40a36dac28af1766968c30c2313f3a38904" {
+		let asset_str = m.output.asset.to_hex();
+		let asset = if asset_str == "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac031d3c6863973926e049e637cb1b5f40a36dac28af1766968c30c2313f3a38904" {
                     "Main".to_owned()
                 } else {
                     format!("{}...", &asset_str[0..10])
